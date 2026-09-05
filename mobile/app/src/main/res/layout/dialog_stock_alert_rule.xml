@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_bottom_sheet_card">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Aturan Stok Opname &amp; Notifikasi Draft"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tentukan batas minimum stok agar otomatis masuk ke Draft Belanja saat stok mulai kosong"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="2dp" />
+
+        <!-- 1. Batas Minimum Stok -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Batas Minimum Stok (Alert Threshold)"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#334155" />
+
+        <EditText
+            android:id="@+id/etMinStockThreshold"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input_box"
+            android:paddingHorizontal="14dp"
+            android:hint="5"
+            android:textColor="#0F172A"
+            android:textSize="14sp"
+            android:inputType="number"
+            android:singleLine="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Jika stok riil saat stokopname &lt;= batas ini, otomatis diusulkan restock"
+            android:textSize="11sp"
+            android:textColor="#94A3B8"
+            android:layout_marginTop="2dp" />
+
+        <!-- 2. Toggle Otomatis Buat Draft Belanja -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#F8FAFC"
+            android:padding="12dp"
+            android:layout_marginTop="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Otomatis Masuk ke Tab Draft"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#0F172A" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Buat draft pesanan belanja supplier secara otomatis"
+                    android:textSize="11sp"
+                    android:textColor="#64748B" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchAutoDraft"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true" />
+        </LinearLayout>
+
+        <!-- 3. Nama Supplier Default -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Supplier Rekanan Default"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#334155" />
+
+        <EditText
+            android:id="@+id/etDefaultSupplier"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input_box"
+            android:paddingHorizontal="14dp"
+            android:hint="Contoh: CV. Sumber Makmur"
+            android:textColor="#0F172A"
+            android:textSize="14sp"
+            android:singleLine="true" />
+
+        <!-- 4. Jumlah Standar Reorder -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Jumlah Saran Reorder (Pcs/Kg)"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#334155" />
+
+        <EditText
+            android:id="@+id/etAutoReorderQty"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_input_box"
+            android:paddingHorizontal="14dp"
+            android:hint="20"
+            android:textColor="#0F172A"
+            android:textSize="14sp"
+            android:inputType="number"
+            android:singleLine="true" />
+
+        <!-- Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancelStockRule"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="Batal"
+                android:textColor="@color/text_primary"
+                android:textStyle="bold"
+                app:backgroundTint="@color/purple_button_light"
+                app:cornerRadius="12dp"
+                android:layout_marginEnd="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveStockRule"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1.3"
+                android:text="Simpan Aturan"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                app:backgroundTint="#3E24E2"
+                app:cornerRadius="12dp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

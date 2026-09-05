@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="3dp">
+
+    <TextView
+        android:id="@+id/tvNominalLabel"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:gravity="center"
+        android:background="@drawable/bg_nominal_card_unselected"
+        android:textColor="#0F172A"
+        android:textSize="13sp"
+        android:textStyle="normal"
+        android:clickable="true"
+        android:focusable="true"
+        tools:text="100.000" />
+
+</FrameLayout>

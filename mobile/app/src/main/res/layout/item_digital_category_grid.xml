@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="2dp"
+    android:background="?attr/selectableItemBackgroundBorderless"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Promo / Baru Badge (Top) -->
+    <TextView
+        android:id="@+id/tvCategoryBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:background="@drawable/bg_badge_promo"
+        android:visibility="invisible"
+        android:includeFontPadding="false"
+        tools:text="Promo"
+        tools:visibility="visible" />
+
+    <!-- Icon Container -->
+    <ImageView
+        android:id="@+id/ivCategoryIcon"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:layout_marginTop="2dp"
+        android:scaleType="centerInside"
+        tools:src="@drawable/ic_digital_pulsa" />
+
+    <!-- Category Label -->
+    <TextView
+        android:id="@+id/tvCategoryTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:textColor="#1E293B"
+        android:textSize="11sp"
+        android:lineSpacingExtra="1dp"
+        android:minLines="2"
+        android:maxLines="2"
+        android:ellipsize="end"
+        tools:text="Pulsa" />
+
+</LinearLayout>

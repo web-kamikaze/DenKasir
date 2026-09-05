@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@drawable/bg_bottom_sheet_card">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Metode Pembayaran"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_primary" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="12dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Total Tagihan:"
+            android:textSize="15sp"
+            android:textColor="@color/text_secondary" />
+        <TextView
+            android:id="@+id/tvDialogTotalTagihan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rp 43.500"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/green_total" />
+    </LinearLayout>
+
+    <!-- Pilihan Pembayaran: Tunai, QRIS, Transfer, Kasbon -->
+    <RadioGroup
+        android:id="@+id/rgPaymentMethod"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp">
+        <RadioButton
+            android:id="@+id/rbCash"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tunai"
+            android:checked="true" />
+        <RadioButton
+            android:id="@+id/rbQris"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="QRIS" />
+        <RadioButton
+            android:id="@+id/rbKasbon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Kasbon" />
+    </RadioGroup>
+
+    <!-- Input Uang Tunai Diterima -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilCashGiven"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:boxCornerRadiusTopStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusBottomEnd="12dp"
+        android:hint="Uang Diterima (Rp)">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etCashGiven"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Nominal Cepat (Uang Pas, 50k, 100k) -->
+    <LinearLayout
+        android:id="@+id/quickCashLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnExactAmount"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="Uang Pas"
+            android:textSize="11sp"
+            app:backgroundTint="@color/purple_button_light"
+            android:textColor="@color/text_primary"
+            android:layout_marginEnd="4dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFiftyK"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="50.000"
+            android:textSize="11sp"
+            app:backgroundTint="@color/purple_button_light"
+            android:textColor="@color/text_primary"
+            android:layout_marginHorizontal="2dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHundredK"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="100.000"
+            android:textSize="11sp"
+            app:backgroundTint="@color/purple_button_light"
+            android:textColor="@color/text_primary"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <!-- Kembalian -->
+    <LinearLayout
+        android:id="@+id/changeLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="12dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Kembalian:"
+            android:textSize="15sp"
+            android:textColor="@color/text_secondary" />
+        <TextView
+            android:id="@+id/tvChangeAmount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rp 0"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnConfirmPayment"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="SELESAIKAN TRANSAKSI"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        app:backgroundTint="@color/purple_button"
+        app:cornerRadius="14dp"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>

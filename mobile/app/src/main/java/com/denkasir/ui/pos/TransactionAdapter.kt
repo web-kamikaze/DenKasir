@@ -1,0 +1,84 @@
+package com.denkasir.ui.pos
+
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
+import com.denkasir.R
+import com.denkasir.data.local.entity.TransactionEntity
+import com.denkasir.databinding.ItemTransactionHistoryBinding
+import com.denkasir.utils.CurrencyUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class TransactionAdapter(
+    private val onItemClick: (TransactionEntity) -> Unit,
+    private val onPrintClick: (TransactionEntity) -> Unit,
+    private val onShareClick: (TransactionEntity) -> Unit
+) : RecyclerView.Adapter<TransactionAdapter.TransactionViewHolder>() {
+
+    private val items = mutableListOf<TransactionEntity>()
+    private val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("in", "ID"))
+
+    fun submitList(newItems: List<TransactionEntity>) {
+        items.clear()
+        items.addAll(newItems)
+        notifyDataSetChanged()
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransactionViewHolder {
+        val binding = ItemTransactionHistoryBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
+        )
+        return TransactionViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: TransactionViewHolder, position: Int) {
+        holder.bind(items[position])
+    }
+
+    override fun getItemCount(): Int = items.size
+
+    inner class TransactionViewHolder(private val binding: ItemTransactionHistoryBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(trx: TransactionEntity) {
+            val context = binding.root.context
+            binding.tvTrxInvoice.text = trx.invoiceNumber
+            binding.tvTrxDate.text = dateFormat.format(Date(trx.createdAt))
+            binding.tvCustomerName.text = trx.customerName ?: "Pelanggan Warung"
+            binding.tvTrxTotalAmount.text = CurrencyUtils.formatRupiah(trx.totalAmount)
+
+            binding.badgePaymentMethod.text = trx.paymentMethod
+            when (trx.paymentMethod.uppercase()) {
+                "CASH", "TUNAI" -> {
+                    binding.badgePaymentMethod.setTextColor(ContextCompat.getColor(context, R.color.primary_purple))
+                    binding.badgePaymentMethod.background = ContextCompat.getDrawable(context, R.drawable.bg_badge_curah)
+                }
+                "QRIS" -> {
+                    binding.badgePaymentMethod.setTextColor(ContextCompat.getColor(context, R.color.green_total))
+                    binding.badgePaymentMethod.background = ContextCompat.getDrawable(context, R.drawable.bg_badge_cepat)
+                }
+                "KASBON" -> {
+                    binding.badgePaymentMethod.setTextColor(ContextCompat.getColor(context, R.color.red_cancel))
+                    binding.badgePaymentMethod.background = ContextCompat.getDrawable(context, R.drawable.bg_badge_selisih)
+                }
+            }
+
+            binding.btnPrintTrx.setOnClickListener {
+                onPrintClick(trx)
+            }
+
+            binding.btnShareWaTrx.setOnClickListener {
+                onShareClick(trx)
+            }
+
+            binding.root.setOnClickListener {
+                onItemClick(trx)
+            }
+        }
+    }
+}

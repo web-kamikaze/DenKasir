@@ -1,0 +1,41 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.8"
+        android:scaleY="1.8"
+        android:translateX="32.4"
+        android:translateY="32.4">
+        <!-- Register Top Display Screen -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M7,3h10c0.55,0 1,0.45 1,1v2H6V4c0,-0.55 0.45,-1 1,-1z"/>
+        <path
+            android:fillColor="#34D399"
+            android:pathData="M8,4.2h8v1H8z"/>
+        <!-- Register Body -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M4,7h16c0.55,0 1,0.45 1,1v11c0,0.55 -0.45,1 -1,1H4c-0.55,0 -1,-0.45 -1,-1V8c0,-0.55 0.45,-1 1,-1z"/>
+        <!-- Display Receipt Window -->
+        <path
+            android:fillColor="#4326D7"
+            android:pathData="M6,9h12v2H6V9z"/>
+        <!-- Matrix Keypad Buttons -->
+        <path
+            android:fillColor="#4326D7"
+            android:pathData="M6,13h2v2H6V13z"/>
+        <path
+            android:fillColor="#4326D7"
+            android:pathData="M10,13h2v2h-2V13z"/>
+        <path
+            android:fillColor="#4326D7"
+            android:pathData="M14,13h2v2h-2V13z"/>
+        <!-- Cash Drawer Line -->
+        <path
+            android:fillColor="#4326D7"
+            android:pathData="M6,17h12v1.5H6V17z"/>
+    </group>
+</vector>

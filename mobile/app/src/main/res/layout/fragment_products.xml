@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_screen">
+
+    <!-- Header Gradient Top Bar -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/headerLayout"
+        android:layout_width="0dp"
+        android:layout_height="80dp"
+        android:background="@drawable/bg_header_gradient"
+        android:paddingHorizontal="20dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Produk &amp; Layanan"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddProduct"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="+ Tambah"
+            android:textColor="@color/primary_purple"
+            android:textStyle="bold"
+            app:backgroundTint="@android:color/white"
+            app:cornerRadius="10dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Switcher Tab: Barang Fisik (Retail) vs Produk Digital (Pulsa/PLN) -->
+    <LinearLayout
+        android:id="@+id/productTypeTabs"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:background="@android:color/white"
+        android:elevation="2dp"
+        app:layout_constraintTop_toBottomOf="@id/headerLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Tab 1: Retail Fisik -->
+        <LinearLayout
+            android:id="@+id/tabRetail"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tvTabRetail"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Barang Fisik (Stok)"
+                android:textColor="#3418D6"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+            <View
+                android:id="@+id/indicatorRetail"
+                android:layout_width="48dp"
+                android:layout_height="3dp"
+                android:background="#3418D6" />
+        </LinearLayout>
+
+        <!-- Tab 2: Digital Saldo Pulsa/PLN -->
+        <LinearLayout
+            android:id="@+id/tabDigital"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <TextView
+                android:id="@+id/tvTabDigital"
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Digital (Deposit Saldo)"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+            <View
+                android:id="@+id/indicatorDigital"
+                android:layout_width="48dp"
+                android:layout_height="3dp"
+                android:background="@android:color/transparent" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Main Container -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_constraintTop_toBottomOf="@id/productTypeTabs"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Card Saldo Deposit Server (Only for Digital Mode) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardDepositBalance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_ringkasan_keuangan"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tvDepositLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💳 Saldo Deposit Server (Pulsa &amp; PLN)"
+                    android:textColor="#C7D2FE"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvDepositBalanceAmount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Rp 2.450.000"
+                    android:textColor="#34D399"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginTop="4dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tvDepositLabel" />
+
+                <TextView
+                    android:id="@+id/tvDepositProviderStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Server: OtomaX H2H • Siap Transaksi"
+                    android:textColor="#E0E7FF"
+                    android:textSize="11sp"
+                    android:layout_marginTop="4dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tvDepositBalanceAmount" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTopUpDeposit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:text="+ Top Up Saldo"
+                    android:textColor="#3E24E2"
+                    android:textStyle="bold"
+                    android:textSize="12sp"
+                    app:backgroundTint="@android:color/white"
+                    app:cornerRadius="10dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- RecyclerView for Retail (Physical Stock) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvProductsList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            tools:listitem="@layout/item_product_manage" />
+
+        <!-- RecyclerView for Digital (Token PLN & Pulsa) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDigitalProductsList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:visibility="gone"
+            tools:listitem="@layout/item_digital_product" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

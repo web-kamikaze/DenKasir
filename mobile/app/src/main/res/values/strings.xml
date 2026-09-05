@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DenKasir</string>
+    <string name="sub_title">DENKASIR UMKM</string>
+    <string name="kasir">Kasir</string>
+    <string name="produk">Produk</string>
+    <string name="transaksi">Transaksi</string>
+    <string name="laporan">Laporan</string>
+    <string name="akun">Akun</string>
+    <string name="search_placeholder">Scan barcode atau cari produk</string>
+    <string name="total_item">Total Item</string>
+    <string name="total_bayar">Total Bayar</string>
+    <string name="batal">BATAL</string>
+    <string name="bayar">BAYAR →</string>
+</resources>
