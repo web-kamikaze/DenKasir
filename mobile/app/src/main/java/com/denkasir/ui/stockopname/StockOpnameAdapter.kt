@@ -55,7 +55,7 @@ class StockOpnameAdapter(
             binding.tvOpnameProductName.text = item.name
             binding.tvOpnameStockDetail.text = "Stok Sistem: ${item.systemStock}  •  Stok Fisik: ${item.physicalStock}"
 
-            ImageUtils.loadProductImage(binding.ivProductThumb, item.imagePath)
+            ImageUtils.loadProductImage(binding.ivProductThumb, item.imagePath, null, item.name)
 
             if (item.isMatched) {
                 binding.badgeStatus.text = "✓ Cocok"

@@ -10,6 +10,7 @@ import com.denkasir.utils.ImageUtils
 
 class ProductAdapter(
     private val onItemClick: (ProductEntity) -> Unit,
+    private val onEditClick: (ProductEntity) -> Unit = onItemClick,
     private val onDeleteClick: (ProductEntity) -> Unit
 ) : RecyclerView.Adapter<ProductAdapter.ProductViewHolder>() {
 
@@ -52,7 +53,11 @@ class ProductAdapter(
                 "Tipe: ${product.productType}"
             }
 
-            ImageUtils.loadProductImage(binding.ivProductIcon, product.imagePath)
+            ImageUtils.loadProductImage(binding.ivProductIcon, product)
+
+            binding.btnEditProduct.setOnClickListener {
+                onEditClick(product)
+            }
 
             binding.btnDeleteProduct.setOnClickListener {
                 onDeleteClick(product)
@@ -64,4 +69,3 @@ class ProductAdapter(
         }
     }
 }
-

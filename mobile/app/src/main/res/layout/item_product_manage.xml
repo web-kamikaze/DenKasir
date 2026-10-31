@@ -66,7 +66,7 @@
                     android:id="@+id/tvProductStock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="•  Stok: 50 Pcs"
+                    android:text="- Stok: 50 Pcs"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:layout_marginStart="6dp" />
@@ -83,7 +83,7 @@
 
         </LinearLayout>
 
-        <!-- Actions (Delete) -->
+        <!-- Actions (Edit & Delete) -->
         <LinearLayout
             android:id="@+id/actionsLayout"
             android:layout_width="wrap_content"
@@ -95,13 +95,24 @@
             app:layout_constraintBottom_toBottomOf="parent">
 
             <ImageButton
+                android:id="@+id/btnEditProduct"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_edit"
+                app:tint="#3E24E2"
+                android:scaleType="centerInside"
+                android:contentDescription="Edit Produk" />
+
+            <ImageButton
                 android:id="@+id/btnDeleteProduct"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_close"
                 app:tint="@color/red_cancel"
-                android:scaleType="centerInside" />
+                android:scaleType="centerInside"
+                android:contentDescription="Hapus Produk" />
 
         </LinearLayout>
 

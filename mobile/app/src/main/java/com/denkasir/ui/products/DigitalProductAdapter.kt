@@ -9,6 +9,7 @@ import com.denkasir.utils.CurrencyUtils
 
 class DigitalProductAdapter(
     private val onItemClick: (ProductEntity) -> Unit,
+    private val onEditClick: (ProductEntity) -> Unit = onItemClick,
     private val onDeleteClick: (ProductEntity) -> Unit
 ) : RecyclerView.Adapter<DigitalProductAdapter.DigitalViewHolder>() {
 
@@ -42,10 +43,14 @@ class DigitalProductAdapter(
             binding.tvDigitalName.text = product.name
             binding.badgeCategory.text = product.category
             binding.tvDigitalSellingPrice.text = "Jual: ${CurrencyUtils.formatRupiah(product.sellingPrice)}"
-            binding.tvDigitalCostPrice.text = "â€¢ Modal: ${CurrencyUtils.formatRupiah(product.costPrice)}"
+            binding.tvDigitalCostPrice.text = "• Modal: ${CurrencyUtils.formatRupiah(product.costPrice)}"
             
             val profit = maxOf(0.0, product.sellingPrice - product.costPrice)
             binding.tvDigitalProfit.text = "Laba per Trx: +${CurrencyUtils.formatRupiah(profit)} (Potong Saldo)"
+
+            binding.btnEditDigital.setOnClickListener {
+                onEditClick(product)
+            }
 
             binding.btnDeleteDigital.setOnClickListener {
                 onDeleteClick(product)

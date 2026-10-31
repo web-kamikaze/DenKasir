@@ -1,4 +1,4 @@
-# Git Ignore for DenKasir
+﻿# Git Ignore for DenKasir
 
 # Python / FastAPI
 __pycache__/
@@ -32,3 +32,9 @@ captures/
 Thumbs.db
 denkasir_screen.png
 
+
+*.db
+
+# Screenshots
+/screenshot_pos.png
+/test_screen.png

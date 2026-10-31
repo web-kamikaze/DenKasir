@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import java.util.UUID
 
 class ProductsFragment : Fragment() {
@@ -47,14 +50,24 @@ class ProductsFragment : Fragment() {
     private var tempCameraUri: Uri? = null
     private var currentTab = "RETAIL" // RETAIL or DIGITAL
 
+    private var allRetailProducts = listOf<ProductEntity>()
+    private var allDigitalProducts = listOf<ProductEntity>()
+    private var currentSearchQuery = ""
+    private var isScanningForSearch = false
+
     private val scanBarcodeLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val barcode = result.data?.getStringExtra("SCANNED_BARCODE")
             if (!barcode.isNullOrEmpty()) {
-                if (activeBarcodeBinding != null) {
+                if (isScanningForSearch) {
+                    binding.etSearchProduct.setText(barcode)
+                    binding.etSearchProduct.setSelection(barcode.length)
+                    isScanningForSearch = false
+                } else if (activeBarcodeBinding != null) {
                     activeBarcodeBinding?.etProductBarcode?.setText(barcode)
+                    Toast.makeText(requireContext(), "Barcode berhasil dipindai: $barcode", Toast.LENGTH_SHORT).show()
                 } else {
                     showProductFormBottomSheet(prefilledBarcode = barcode)
                 }
@@ -113,6 +126,7 @@ class ProductsFragment : Fragment() {
 
         setupRecyclerViews()
         setupTabSwitching()
+        setupSearchBar()
 
         binding.btnAddProduct.setOnClickListener {
             showAddProductOptionsDialog()
@@ -125,14 +139,20 @@ class ProductsFragment : Fragment() {
         // 1. Observe Retail Products
         viewLifecycleOwner.lifecycleScope.launch {
             productDao.getRetailProducts().collectLatest { products ->
-                productAdapter.submitList(products)
+                allRetailProducts = products
+                if (currentTab == "RETAIL") {
+                    filterProducts()
+                }
             }
         }
 
         // 2. Observe Digital Products (Token PLN, Pulsa, dll)
         viewLifecycleOwner.lifecycleScope.launch {
             productDao.getDigitalProducts().collectLatest { digitalProducts ->
-                digitalProductAdapter.submitList(digitalProducts)
+                allDigitalProducts = digitalProducts
+                if (currentTab == "DIGITAL") {
+                    filterProducts()
+                }
             }
         }
 
@@ -142,6 +162,28 @@ class ProductsFragment : Fragment() {
                 val balance = config?.balance ?: 0.0
                 binding.tvDepositBalanceAmount.text = CurrencyUtils.formatRupiah(balance)
             }
+        }
+    }
+
+    private fun setupSearchBar() {
+        binding.etSearchProduct.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                currentSearchQuery = s?.toString() ?: ""
+                binding.btnClearSearch.visibility = if (currentSearchQuery.isNotEmpty()) View.VISIBLE else View.GONE
+                filterProducts()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        binding.btnClearSearch.setOnClickListener {
+            binding.etSearchProduct.setText("")
+        }
+
+        binding.btnScanSearchBarcode.setOnClickListener {
+            isScanningForSearch = true
+            val intent = Intent(requireContext(), BarcodeScannerActivity::class.java)
+            scanBarcodeLauncher.launch(intent)
         }
     }
 
@@ -159,9 +201,8 @@ class ProductsFragment : Fragment() {
             binding.tvTabDigital.setTypeface(null, android.graphics.Typeface.NORMAL)
             binding.indicatorDigital.setBackgroundColor(Color.TRANSPARENT)
 
-            binding.cardDepositBalance.visibility = View.GONE
-            binding.rvProductsList.visibility = View.VISIBLE
-            binding.rvDigitalProductsList.visibility = View.GONE
+            binding.etSearchProduct.hint = "Cari nama atau barcode produk..."
+            filterProducts()
         }
 
         binding.tabDigital.setOnClickListener {
@@ -174,9 +215,67 @@ class ProductsFragment : Fragment() {
             binding.tvTabRetail.setTypeface(null, android.graphics.Typeface.NORMAL)
             binding.indicatorRetail.setBackgroundColor(Color.TRANSPARENT)
 
-            binding.cardDepositBalance.visibility = View.VISIBLE
+            binding.etSearchProduct.hint = "Cari nama paket, pulsa, atau PLN..."
+            filterProducts()
+        }
+    }
+
+    private fun filterProducts() {
+        val query = currentSearchQuery.trim().lowercase(Locale.ROOT)
+        if (currentTab == "RETAIL") {
+            val filtered = if (query.isEmpty()) {
+                allRetailProducts
+            } else {
+                allRetailProducts.filter { product ->
+                    product.name.lowercase(Locale.ROOT).contains(query) ||
+                    (!product.barcode.isNullOrEmpty() && product.barcode.lowercase(Locale.ROOT).contains(query)) ||
+                    product.category.lowercase(Locale.ROOT).contains(query)
+                }
+            }
+            productAdapter.submitList(filtered)
+            if (filtered.isEmpty()) {
+                binding.layoutEmptyState.visibility = View.VISIBLE
+                binding.rvProductsList.visibility = View.GONE
+                if (query.isEmpty()) {
+                    binding.tvEmptyStateTitle.text = "Belum Ada Produk Fisik"
+                    binding.tvEmptyStateMessage.text = "Klik tombol \"+ Tambah\" di pojok kanan atas untuk menambahkan produk."
+                } else {
+                    binding.tvEmptyStateTitle.text = "Produk Tidak Ditemukan"
+                    binding.tvEmptyStateMessage.text = "Tidak ada produk retail dengan kata kunci \"$currentSearchQuery\"."
+                }
+            } else {
+                binding.layoutEmptyState.visibility = View.GONE
+                binding.rvProductsList.visibility = View.VISIBLE
+            }
+            binding.rvDigitalProductsList.visibility = View.GONE
+            binding.cardDepositBalance.visibility = View.GONE
+        } else {
+            val filtered = if (query.isEmpty()) {
+                allDigitalProducts
+            } else {
+                allDigitalProducts.filter { product ->
+                    product.name.lowercase(Locale.ROOT).contains(query) ||
+                    product.category.lowercase(Locale.ROOT).contains(query) ||
+                    (!product.barcode.isNullOrEmpty() && product.barcode.lowercase(Locale.ROOT).contains(query))
+                }
+            }
+            digitalProductAdapter.submitList(filtered)
+            if (filtered.isEmpty()) {
+                binding.layoutEmptyState.visibility = View.VISIBLE
+                binding.rvDigitalProductsList.visibility = View.GONE
+                if (query.isEmpty()) {
+                    binding.tvEmptyStateTitle.text = "Belum Ada Layanan Digital"
+                    binding.tvEmptyStateMessage.text = "Layanan pulsa & token PLN belum tersedia."
+                } else {
+                    binding.tvEmptyStateTitle.text = "Layanan Tidak Ditemukan"
+                    binding.tvEmptyStateMessage.text = "Tidak ada layanan digital dengan kata kunci \"$currentSearchQuery\"."
+                }
+            } else {
+                binding.layoutEmptyState.visibility = View.GONE
+                binding.rvDigitalProductsList.visibility = View.VISIBLE
+            }
             binding.rvProductsList.visibility = View.GONE
-            binding.rvDigitalProductsList.visibility = View.VISIBLE
+            binding.cardDepositBalance.visibility = View.VISIBLE
         }
     }
 
@@ -184,6 +283,9 @@ class ProductsFragment : Fragment() {
         // Retail Product Adapter
         productAdapter = ProductAdapter(
             onItemClick = { product ->
+                showProductFormBottomSheet(existingProduct = product)
+            },
+            onEditClick = { product ->
                 showProductFormBottomSheet(existingProduct = product)
             },
             onDeleteClick = { product ->
@@ -198,6 +300,9 @@ class ProductsFragment : Fragment() {
         // Digital Product Adapter (Token Listrik & Pulsa)
         digitalProductAdapter = DigitalProductAdapter(
             onItemClick = { product ->
+                showProductFormBottomSheet(existingProduct = product)
+            },
+            onEditClick = { product ->
                 showProductFormBottomSheet(existingProduct = product)
             },
             onDeleteClick = { product ->
@@ -219,7 +324,7 @@ class ProductsFragment : Fragment() {
                     withContext(Dispatchers.IO) {
                         AppDatabase.getDatabase(requireContext()).productDao().deleteProduct(product)
                     }
-                    Toast.makeText(requireContext(), "Produk dihapus", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Produk berhasil dihapus", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Batal", null)
@@ -269,6 +374,7 @@ class ProductsFragment : Fragment() {
 
         dialogBinding.cardOptionScanBarcode.setOnClickListener {
             dialog.dismiss()
+            isScanningForSearch = false
             val intent = Intent(requireContext(), BarcodeScannerActivity::class.java)
             scanBarcodeLauncher.launch(intent)
         }
@@ -306,13 +412,65 @@ class ProductsFragment : Fragment() {
     }
 
     private fun showProductPhotoSourceDialog() {
-        val options = arrayOf("Ambil Foto dari Kamera", "Pilih Foto dari Galeri")
+        val options = arrayOf("Ambil Foto dari Kamera", "Pilih Foto dari Galeri", "Input Link / URL Gambar Web")
         AlertDialog.Builder(requireContext())
             .setTitle("Unggah Foto Produk")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> checkCameraPermissionAndCapture()
                     1 -> pickImageLauncher.launch("image/*")
+                    2 -> showInputImageUrlDialog()
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showInputImageUrlDialog() {
+        val input = EditText(requireContext()).apply {
+            hint = "https://contoh.com/gambar-produk.jpg"
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
+            setPadding(40, 30, 40, 30)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Input Link / URL Foto Produk")
+            .setMessage("Masukkan link URL gambar dari internet. Gambar akan otomatis diunduh ke memori internal HP agar bisa dibuka saat offline:")
+            .setView(input)
+            .setPositiveButton("Unduh & Pasang") { _, _ ->
+                val url = input.text.toString().trim()
+                if (url.isBlank()) {
+                    Toast.makeText(requireContext(), "URL gambar tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
+                    Toast.makeText(requireContext(), "URL harus diawali http:// atau https://", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                Toast.makeText(requireContext(), "Mengunduh gambar dari internet...", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    val localFile = withContext(Dispatchers.IO) {
+                        ImageUtils.downloadImageFromUrl(requireContext(), url)
+                    }
+                    if (localFile != null && localFile.exists()) {
+                        activeProductPhotoPath = localFile.absolutePath
+                        activeFormBinding?.let { fb ->
+                            ImageUtils.loadProductImage(fb.ivProductPhotoPreview, localFile.absolutePath)
+                            fb.btnRemovePhoto.visibility = View.VISIBLE
+                            fb.btnUploadPhoto.text = "Ganti Foto"
+                        }
+                        Toast.makeText(requireContext(), "Gambar berhasil diunduh ke memori lokal HP (Offline Ready)!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Fallback pasang URL online
+                        activeProductPhotoPath = url
+                        activeFormBinding?.let { fb ->
+                            ImageUtils.loadProductImage(fb.ivProductPhotoPreview, url)
+                            fb.btnRemovePhoto.visibility = View.VISIBLE
+                            fb.btnUploadPhoto.text = "Ganti Foto"
+                        }
+                        Toast.makeText(requireContext(), "Gagal unduh ke lokal, foto dipasang via URL online.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton("Batal", null)
@@ -388,24 +546,59 @@ class ProductsFragment : Fragment() {
             Toast.makeText(requireContext(), "Foto produk dihapus", Toast.LENGTH_SHORT).show()
         }
 
-        if (existingProduct != null) {
-            formBinding.tvFormTitle.text = "Edit Produk"
+        formBinding.rgCategory.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId == R.id.rbPulsa) {
+                formBinding.tilInitialStock.visibility = View.GONE
+            } else {
+                formBinding.tilInitialStock.visibility = View.VISIBLE
+            }
+        }
+
+        val isEdit = existingProduct != null
+        if (isEdit) {
+            val isDigital = existingProduct!!.productType == "DIGITAL"
+            formBinding.tvFormTitle.text = if (isDigital) "Edit Layanan Digital" else "Edit Produk"
+            formBinding.tvFormSubtitle.text = "Perbarui rincian harga, foto, barcode, atau data produk ini"
+            formBinding.btnSaveProduct.text = "SIMPAN PERUBAHAN"
+
             formBinding.etProductName.setText(existingProduct.name)
             formBinding.etProductBarcode.setText(existingProduct.barcode ?: "")
-            formBinding.etCostPrice.setText(if (existingProduct.costPrice > 0) existingProduct.costPrice.toInt().toString() else "")
-            formBinding.etSellingPrice.setText(existingProduct.sellingPrice.toInt().toString())
-            formBinding.etInitialStock.setText(
-                if (existingProduct.stock % 1.0 == 0.0) existingProduct.stock.toInt().toString()
-                else existingProduct.stock.toString()
-            )
+
+            val costStr = if (existingProduct.costPrice > 0) {
+                if (existingProduct.costPrice % 1.0 == 0.0) existingProduct.costPrice.toLong().toString()
+                else existingProduct.costPrice.toString()
+            } else ""
+            formBinding.etCostPrice.setText(costStr)
+
+            val sellStr = if (existingProduct.sellingPrice % 1.0 == 0.0) {
+                existingProduct.sellingPrice.toLong().toString()
+            } else {
+                existingProduct.sellingPrice.toString()
+            }
+            formBinding.etSellingPrice.setText(sellStr)
+
+            val stockStr = if (existingProduct.stock % 1.0 == 0.0) {
+                existingProduct.stock.toLong().toString()
+            } else {
+                existingProduct.stock.toString()
+            }
+            formBinding.etInitialStock.setText(stockStr)
+            formBinding.tilInitialStock.hint = "Stok Barang Saat Ini"
 
             when (existingProduct.category) {
                 "Kg" -> formBinding.rbKg.isChecked = true
-                "Pulsa", "PLN", "Paket Data" -> formBinding.rbPulsa.isChecked = true
+                "Pulsa", "PLN", "Paket Data" -> {
+                    formBinding.rbPulsa.isChecked = true
+                    formBinding.tilInitialStock.visibility = View.GONE
+                }
                 else -> formBinding.rbPcs.isChecked = true
             }
         } else {
             formBinding.tvFormTitle.text = "Tambah Produk Baru"
+            formBinding.tvFormSubtitle.text = "Lengkapi data barang dan foto produk untuk database lokal warung"
+            formBinding.btnSaveProduct.text = "SIMPAN PRODUK"
+            formBinding.tilInitialStock.hint = "Stok Awal Barang"
+
             if (!prefilledBarcode.isNullOrEmpty()) {
                 formBinding.etProductBarcode.setText(prefilledBarcode)
             }
@@ -413,10 +606,12 @@ class ProductsFragment : Fragment() {
                 formBinding.rbKg.isChecked = true
             } else if (currentTab == "DIGITAL") {
                 formBinding.rbPulsa.isChecked = true
+                formBinding.tilInitialStock.visibility = View.GONE
             }
         }
 
         formBinding.btnScanBarcodeFromForm.setOnClickListener {
+            isScanningForSearch = false
             val intent = Intent(requireContext(), BarcodeScannerActivity::class.java)
             scanBarcodeLauncher.launch(intent)
         }
@@ -437,7 +632,8 @@ class ProductsFragment : Fragment() {
         formBinding.btnSaveProduct.setOnClickListener {
             val name = formBinding.etProductName.text.toString().trim()
             if (name.isEmpty()) {
-                Toast.makeText(requireContext(), "Nama produk tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+                formBinding.etProductName.error = "Nama produk tidak boleh kosong!"
+                formBinding.etProductName.requestFocus()
                 return@setOnClickListener
             }
 
@@ -446,31 +642,57 @@ class ProductsFragment : Fragment() {
             val sellingPrice = formBinding.etSellingPrice.text.toString().toDoubleOrNull() ?: 0.0
             val stock = formBinding.etInitialStock.text.toString().toDoubleOrNull() ?: 0.0
 
+            if (sellingPrice < 0) {
+                formBinding.etSellingPrice.error = "Harga jual tidak boleh negatif!"
+                formBinding.etSellingPrice.requestFocus()
+                return@setOnClickListener
+            }
+
             val category = when (formBinding.rgCategory.checkedRadioButtonId) {
                 R.id.rbKg -> "Kg"
-                R.id.rbPulsa -> if (name.contains("PLN", ignoreCase = true)) "PLN" else "Pulsa"
+                R.id.rbPulsa -> if (name.contains("PLN", ignoreCase = true)) "PLN" else if (existingProduct?.category in listOf("PLN", "Pulsa", "Paket Data")) existingProduct!!.category else "Pulsa"
                 else -> "Pcs"
             }
 
-            val productType = if (category == "Pulsa" || category == "PLN" || category == "Paket Data") "DIGITAL" else "RETAIL"
+            val productType = if (category == "Pulsa" || category == "PLN" || category == "Paket Data" || (existingProduct != null && existingProduct.productType == "DIGITAL" && formBinding.rgCategory.checkedRadioButtonId == R.id.rbPulsa)) "DIGITAL" else "RETAIL"
 
-            val productToSave = ProductEntity(
-                id = existingProduct?.id ?: UUID.randomUUID().toString(),
-                name = name,
-                barcode = barcode,
-                category = category,
-                productType = productType,
-                costPrice = costPrice,
-                sellingPrice = sellingPrice,
-                stock = if (productType == "DIGITAL") 0.0 else stock, // Produk digital tidak memakai stok fisik
-                imagePath = activeProductPhotoPath
-            )
+            val productToSave = if (existingProduct != null) {
+                existingProduct.copy(
+                    name = name,
+                    barcode = barcode,
+                    category = category,
+                    productType = productType,
+                    costPrice = costPrice,
+                    sellingPrice = sellingPrice,
+                    stock = if (productType == "DIGITAL") 0.0 else stock,
+                    imagePath = activeProductPhotoPath,
+                    updatedAt = System.currentTimeMillis(),
+                    syncStatus = "PENDING"
+                )
+            } else {
+                ProductEntity(
+                    id = UUID.randomUUID().toString(),
+                    storeId = "default_store",
+                    name = name,
+                    barcode = barcode,
+                    category = category,
+                    productType = productType,
+                    costPrice = costPrice,
+                    sellingPrice = sellingPrice,
+                    stock = if (productType == "DIGITAL") 0.0 else stock,
+                    imagePath = activeProductPhotoPath,
+                    createdAt = System.currentTimeMillis(),
+                    updatedAt = System.currentTimeMillis(),
+                    syncStatus = "PENDING"
+                )
+            }
 
             lifecycleScope.launch {
                 withContext(Dispatchers.IO) {
                     AppDatabase.getDatabase(requireContext()).productDao().insertProduct(productToSave)
                 }
-                val msg = if (productType == "DIGITAL") "Layanan digital '$name' (Potong Saldo) berhasil disimpan!" else "Produk '$name' berhasil disimpan!"
+                val actionVerb = if (isEdit) "berhasil diperbarui!" else "berhasil disimpan!"
+                val msg = if (productType == "DIGITAL") "Layanan digital '$name' $actionVerb" else "Produk '$name' $actionVerb"
                 Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }

@@ -1,4 +1,4 @@
-# BUG.md - Log Pencatatan dan Penanganan Bug DenKasir
+﻿# BUG.md - Log Pencatatan dan Penanganan Bug DenKasir
 
 Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kegagalan sistem yang diidentifikasi selama pengembangan aplikasi DenKasir, beserta status dan solusinya sesuai standar `AGENTS.md`.
 
@@ -8,7 +8,7 @@ Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kega
 
 | Total Bug | OPEN | IN_PROGRESS | RESOLVED | WONT_FIX |
 |---|---|---|---|---|
-| 15 | 0 | 0 | 15 | 0 |
+| 25 | 0 | 0 | 25 | 0 |
 
 ---
 
@@ -179,3 +179,148 @@ Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kega
 - **Deskripsi Masalah**: Menyimpan string `Uri` langsung dari Storage Access Framework (SAF) atau Galeri Android (`content://...`) ke database `ProductEntity.imagePath` menyebabkan `SecurityException` atau gambar gagal dimuat saat aplikasi di-restart karena izin akses URI sementara sudah kedaluwarsa.
 - **Dampak / Potensi Resiko**: Thumbnail produk menjadi blank/rusak setelah aplikasi ditutup dan dibuka kembali.
 - **Rekomendasi / Solusi Perbaikan**: Buat utilitas `ImageUtils.copyUriToInternalStorage()` untuk menyalin file gambar ke penyimpanan privat aplikasi (`filesDir/product_images/`) secara offline-first dan simpan path file lokal yang permanen ke database Room.
+
+---
+
+### [BUG-016]
+- **Tanggal**: 2026-09-05
+- **Modul/Komponen**: Backend Core / Database & Settings
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Jika server dijalankan dari root directory D:\SERVER\DenKasir tanpa PostgreSQL service aktif di port 5432, server melempar ConnectionRefusedError karena .env di subfolder ackend/.env tidak terdeteksi otomatis dan fallback database lokal belum terpasang.
+- **Dampak / Potensi Resiko**: Pengembang atau pengguna kasir mode offline-server tidak dapat menjalankan backend secara mandiri tanpa container PostgreSQL.
+- **Rekomendasi / Solusi Perbaikan**: Tambahkan multi-path .env resolution (.env, ackend/.env) pada pydantic-settings, sediakan konfigurasi default yang fleksibel (PostgreSQL untuk Cloud & Docker, SQLite aiosqlite untuk Local standalone fallback), dan validasi konektivitas saat startup.
+---
+
+### [BUG-017]
+- **Tanggal**: 2026-09-05
+- **Modul/Komponen**: Backend Auth / Passlib & Bcrypt 5.0 Compatibility
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Library passlib.context.CryptContext melempar AttributeError: module 'bcrypt' has no attribute '__about__' pada Python 3.12 dengan crypt >= 4.1.0/5.0.0, menyebabkan kegagalan autentikasi dan pembuatan user.
+- **Dampak / Potensi Resiko**: User tidak bisa login atau register ke backend FastAPI.
+- **Rekomendasi / Solusi Perbaikan**: Gunakan implementasi crypt native langsung (crypt.hashpw & crypt.checkpw) dengan penanganan batas 72-byte string di ackend/app/core/security.py.
+---
+
+### [BUG-018]
+- **Tanggal**: 2026-09-08
+- **Modul/Komponen**: Mobile / Hardware / Bluetooth Thermal Printer ESC/POS
+- **Tingkat Keparahan**: `CRITICAL`
+- **Status**: `RESOLVED`
+- **Deskripsi Masalah**: Struk kasir gagal/tidak keluar saat mencetak ke printer Bluetooth thermal meskipun smartphone sudah tersambung/ter-pairing dengan printer. Kegagalan ini disebabkan oleh:
+  1. Pemanggilan cetak struk pada `PaymentSuccessActivity` dan `TransactionsFragment` masih menggunakan hardcoded MAC address dummy (`00:11:22:33:44:55`), mengabaikan printer riil yang dipilih pengguna.
+  2. Ketiadaan multi-tier RFCOMM socket fallback (SPP UUID -> Insecure RFCOMM -> Java Reflection Port 1) pada `BluetoothPrinterDriver` sehingga printer mini Bluetooth POS (Goojprt, MPT-II, RPP02N, dsb.) gagal membuka jalur komunikasi data.
+  3. Ketiadaan pembatalan discovery (`cancelDiscovery()`) sebelum membuat koneksi socket RFCOMM yang menyebabkan socket drop/timeout.
+  4. Kurangnya penanganan runtime permission Android 12+ (`BLUETOOTH_CONNECT`) dan ketiadaan fitur uji coba cetak (Test Print) di halaman pengaturan printer.
+- **Dampak / Potensi Resiko**: Kasir tidak dapat mencetak struk belanja fisik kepada pelanggan warung/toko setelah transaksi pembayaran selesai.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Perbaiki resolver MAC address di `BluetoothPrinterDriver`: membaca konfigurasi tersimpan dari `SharedPreferences` (`denkasir_prefs`), dan otomatis mendeteksi printer yang ter-pairing jika belum diset secara eksplisit.
+  2. Tambahkan multi-tier connection fallback (Standard UUID -> Insecure Socket -> Reflection Channel 1) beserta `cancelDiscovery()` dan timeout coroutine 10 detik.
+  3. Sanitasi karakter teks struk ke encoding `CP437` dengan escape command ESC/POS (`0x1B, 0x40`) dan penambahan baris feed sebelum cut.
+  4. Rombak `PrinterSettingActivity` menjadi antarmuka interaktif: daftar printer ter-pairing, status printer aktif, konfigurasi ukuran kertas (58mm/80mm), tombol Uji Coba Cetak (Test Print), dan panduan membuka Bluetooth HP jika belum terpasang.
+  5. Tambahkan dialog peringatan terintegrasi dengan opsi langsung menuju Pengaturan Printer di `PaymentSuccessActivity` dan `TransactionsFragment` saat cetak gagal atau printer belum dikonfigurasi.
+
+---
+
+### [BUG-019]
+- **Tanggal**: 2026-09-08
+- **Modul/Komponen**: Hardware / Bluetooth Thermal Printer Performance & Reliability
+- **Tingkat Keparahan**: `HIGH`
+- **Status**: `RESOLVED`
+- **Deskripsi Masalah**: Cetak struk printer Bluetooth kadang tidak merespon cepat (mengalami delay 3-10 detik atau macet saat ditekan berulang) meskipun printer sudah berstatus terhubung/terpasang. Penyebab utama:
+  1. *Uncached Connection Fallback*: Setiap pemanggilan `printReceipt` selalu mencoba standard SPP UUID terlebih dahulu, memicu timeout Service Discovery Protocol (SDP) OS selama 3-6 detik pada printer thermal POS mini (MPT-II, PT-210, Goojprt, Panda, BellaV, dsb.) sebelum fallback ke channel port 1.
+  2. *Socket Descriptor Leaks*: Saat terjadi kegagalan socket pada percobaan awal fallback, instance socket tidak ditutup secara eksplisit (`socket.close()`), menyebabkan RFCOMM channel pada BlueDroid/Bluetooth stack terkunci / sibuk.
+  3. *No Socket Session Reuse*: Koneksi RFCOMM selalu diputus dan dibuat ulang dari awal pada setiap transaksi tanpa session caching / keep-alive.
+  4. *Lack of Concurrency Mutex & UI Debouncing*: Tombol 'Cetak Struk' tidak dinonaktifkan saat proses cetak berjalan dan tidak memiliki lock coroutine Mutex, sehingga penekanan ganda oleh kasir memicu race condition koneksi socket paralel ke satu MAC address hardware.
+  5. *Hardcoded MAC Address pada TransactionsFragment*: Pencetakan ulang struk dari menu riwayat transaksi kasir memanggil alamat dummy hardcoded `"00:11:22:33:44:55"`.
+- **Dampak / Potensi Resiko**: Respon cetak struk lambat di kasir toko saat transaksi ramai, memicu kebingungan kasir dan potensi socket error.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Terapkan *Preferred Connection Caching*: Simpan metode koneksi yang sukses per-MAC (Refleksi Port 1 sebagai prioritas mini thermal POS) sehingga koneksi berikutnya instan (sub-100ms).
+  2. Tutup paksa (`socket.close()`) semua socket yang gagal saat transisi fallback untuk mencegah socket descriptor leak.
+  3. Implementasikan socket keep-alive session reuse dengan verifikasi `isConnected` dan auto-recovery fallback saat stream terputus.
+  4. Tambahkan `Mutex.withLock` pada seluruh alur `printReceipt` dan loading feedback/debouncing pada UI button ('Sedang Mencetak...', disabled selama coroutine).
+  5. Perbaiki `TransactionsFragment` agar menggunakan `BluetoothPrinterDriver.printReceipt(context, receiptText)` secara dinamis dan tampilkan dialog pengaturan saat error.
+
+---
+
+### [BUG-020]
+- **Tanggal**: 2026-09-11
+- **Modul/Komponen**: Mobile / Hardware / Bluetooth Thermal Printer Formatting & Responsiveness
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Format cetak struk kasir sebelumnya bersifat kaku (hardcoded 32 kolom untuk 58mm), tidak responsif terhadap pilihan ukuran kertas 80mm (48 kolom), teks header/footer tidak otomatis ter-center (masih menggunakan manual padding spasi), nominal harga tidak rata kanan secara rapi (justified), dan terdapat jeda respons saat tombol cetak ditekan karena ketiadaan socket connection pre-warming serta tactile feedback.
+- **Dampak / Potensi Resiko**: Hasil cetakan pada printer 80mm terlihat menyusut/miring di sisi kiri (hanya memakan 2/3 kertas), teks berantakan/terpotong jika nama toko atau item panjang, dan kasir merasa aplikasi lambat merespon saat menekan tombol cetak.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Membuat utility terpusat ReceiptFormatterUtils.kt yang mendukung deteksi ukuran kertas dinamis (58mm = 32 kolom, 80mm = 48 kolom).
+  2. Mengimplementasikan algoritma word-wrapping, centering teks otomatis, divider garis adaptif (- dan =), serta perataan dua kolom (rata kiri untuk nama/qty dan rata kanan untuk nominal harga).
+  3. Memperbaiki PosViewModel.kt, TransactionsFragment.kt, dan BluetoothPrinterDriver.printTestReceipt() agar memakai format standar terpusat.
+  4. Menambahkan background socket pre-warming (warmupConnection) saat masuk ke PaymentSuccessActivity serta haptic & sound feedback instan (SoundFeedbackUtils.playBarcodeBeepAndVibrate) saat tombol 'Cetak Struk' diklik.
+
+---
+
+### [BUG-021]
+- **Tanggal**: 2026-09-18
+- **Modul/Komponen**: Backend / Test Suite & Database Fixture Lifecycle
+- **Tingkat Keparahan**: MEDIUM
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Test fixture client pada ackend/tests/conftest.py menggunakan ASGITransport(app=app) tanpa memicu lifecycle lifespan FastAPI (init_db & init_seed_data), sehingga saat test dijalankan pada environment bersih tanpa file SQLite yang sudah ada sebelumnya, pengujian gagal dengan error sqlite3.OperationalError: no such table: users.
+- **Dampak / Potensi Resiko**: Eksekusi pengujian otomatis (CI/CD atau local testing) gagal dijalankan jika database belum dibuat secara manual sebelumnya.
+- **Rekomendasi / Solusi Perbaikan**: Tambahkan inisialisasi schema database dan seeding data akun default (init_db() dan init_seed_data()) pada fixture async client di ackend/tests/conftest.py.
+
+---
+
+### [BUG-022]
+- **Tanggal**: 2026-09-18
+- **Modul/Komponen**: Mobile / Room Database Migration & Integrity Hash
+- **Tingkat Keparahan**: `HIGH`
+- **Status**: `RESOLVED`
+- **Deskripsi Masalah**: Terjadi exception `IllegalStateException: Room cannot verify the data integrity. Looks like you've changed schema but forgot to update the version number` saat aplikasi dijalankan di perangkat karena schema hash database lokal sebelumnya berbeda dengan entitas baru di version 5.
+- **Dampak / Potensi Resiko**: Aplikasi mengalami *fatal crash* saat startup saat mencoba membuka koneksi SQLite Room Database.
+- **Rekomendasi / Solusi Perbaikan**: Naikkan versi Room Database menjadi `version = 6` pada `AppDatabase.kt` sehingga memicu `fallbackToDestructiveMigration()` secara otomatis dan bersih.
+
+---
+
+### [BUG-023]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / UI & Database / Product Catalog Search & In-Place Editing
+- **Tingkat Keparahan**: `HIGH`
+- **Status**: `RESOLVED`
+- **Deskripsi Masalah**:
+  1. Pada menu manajemen Produk & Layanan, tidak terdapat fitur kotak pencarian (search bar) real-time sehingga pengguna kesulitan menemukan produk secara cepat saat item bertambah banyak.
+  2. Saat memperbarui data produk lama (*edit existing product*), inisialisasi entitas tidak mengkloning field bawaan (`storeId`, `createdAt`, `minStockAlert`, `providerCode`), yang berpotensi merusak integritas relasi multi-outlet dan data sinkronisasi server backend.
+  3. Form input belum memvalidasi harga negatif dan tidak menyelaraskan input stok fisik ketika jenis produk diubah menjadi digital (pulsa/PLN).
+  4. Penggantian foto produk, penghapusan foto, serta pemindaian ulang barcode langsung dari dialog edit belum terintegrasi secara dinamis ke penyimpanan lokal dan state form.
+- **Dampak / Potensi Resiko**: Data riwayat produk korup/reset saat diedit, pencarian lambat/manual, kasir kebingungan mencari produk di katalog warung, dan potensi kegagalan sinkronisasi cloud.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Menambahkan Kotak Pencarian (`cardSearchBar`, `etSearchProduct`, `btnClearSearch`, dan `btnScanSearchBarcode`) dengan real-time `TextWatcher` dan empty-state informatif yang responsif terhadap perpindahan tab RETAIL vs DIGITAL.
+  2. Menggunakan `existingProduct.copy(...)` pada penyimpanan database agar seluruh metadata entitas (`storeId`, `createdAt`, `minStockAlert`) terjaga utuh dengan `updatedAt` terbaru dan `syncStatus = "PENDING"`.
+  3. Menambahkan tombol aksi eksplisit `btnEditProduct` dan `btnEditDigital` berikon pensil (`ic_edit.xml`), selain mempertahankan gesture klik card.
+  4. Mendukung pembaruan foto (kamera & galeri), penghapusan foto (`btnRemovePhoto`), scan barcode kamera langsung (`btnScanBarcodeFromForm`), serta penyesuaian otomatis visibilitas stok saat beralih ke produk pulsa/PLN.
+
+---
+
+### [BUG-024]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / Accounting & Reporting Engine
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Perhitungan 'Laba Bersih' di halaman Laporan/BKU sebelumnya disamakan dengan Arus Kas Bersih (Total Kas Masuk - Total Kas Keluar). Hal ini menyebabkan distorsi finansial fatal di mana belanja modal stok / kulakan barang dianggap sebagai kerugian langsung (minus margin), sementara HPP (Harga Pokok Penjualan) per item transaksi yang tersimpan di TransactionItemEntity belum dikalkulasikan secara otomatis untuk menghasilkan Laba Kotor dan Laba Bersih akuntansi riil.
+- **Dampak / Potensi Resiko**: Pemilik toko melihat angka laba yang menyesatkan (laba negatif saat kulakan besar, laba semu saat stok terjual tanpa pengurangan modal awal), sehingga berisiko salah mengambil keputusan finansial bisnis.
+- **Rekomendasi / Solusi Perbaikan**: Bangkitkan kalkulasi otomatis Laba Kotor (Total Penjualan - Total HPP Modal Terjual) dari data transaksi, pisahkan beban operasional dari belanja stok barang, dan sajikan kartu Laba Rugi riil (Omzet, HPP, Laba Kotor, Beban Operasional, Laba Bersih) berdampingan dengan ringkasan Arus Kas.
+
+---
+
+### [BUG-025]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / Data Management & Offline Image Persistence
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**:
+  1. Aplikasi baru terisi otomatis (hardcoded) dengan data keranjang belanja POS, sampel arus kas dummy, sampel piutang dummy, dan sampel kulakan dummy saat pertama kali dijalankan, mengaburkan kondisi toko riil saat apk baru dipasang.
+  2. Menu Backup & Restore di pengaturan masih berupa prototipe Toast tanpa kemampuan ekspor/impor database SQLite (.db / .sql), CSV, atau XLSX secara lokal.
+  3. Input foto produk belum menyediakan opsi URL internet, dan jika ada URL gambar, sistem belum mengunduh aset gambar ke direktori internal lokal sehingga berisiko gagal tampil saat perangkat kasir offline.
+- **Dampak / Potensi Resiko**: Pengguna bingung dengan data fiktif bawaan pada aplikasi baru, ketiadaan cadangan data lokal saat terjadi pergantian HP kasir, dan gambar produk hilang/blank saat toko beroperasi offline.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Kosongkan seluruh data awal (initial seed data dummy pada keranjang kasir, arus kas, hutang, pembelian, dan katalog) pada instalasi baru agar bersih dan siap pakai.
+  2. Bangun DataManagementActivity dan utilitas DataExporterImporter lengkap: Backup & Restore Room SQLite .db/.sql, ekspor/impor katalog produk format XLSX & CSV, serta ekspor laporan BKU/Penjualan format XLSX & CSV.
+  3. Tambahkan dialog input URL gambar pada form produk lengkap dengan downloader otomatis ke storage internal (filesDir/product_images/) serta fitur unduh masal gambar URL katalog.

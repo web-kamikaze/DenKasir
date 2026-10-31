@@ -18,14 +18,31 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_STORE_ADDRESS = "key_store_address"
         private const val KEY_STORE_PHONE = "key_store_phone"
 
+        // Server URL & Cloud Sync Keys
+        private const val KEY_SERVER_URL = "key_server_url"
+        private const val KEY_AUTH_TOKEN = "key_auth_token"
+        private const val KEY_LAST_SYNC_TIME = "key_last_sync_time"
+
         // Stock Opname & Auto-Draft Rule Keys
         private const val KEY_MIN_STOCK_ALERT = "key_min_stock_alert"
         private const val KEY_AUTO_DRAFT_ENABLED = "key_auto_draft_enabled"
         private const val KEY_DEFAULT_SUPPLIER = "key_default_supplier"
         private const val KEY_AUTO_REORDER_QTY = "key_auto_reorder_qty"
 
+        // Printer Receipt Layout & Paper Settings (inspired by mate.bluetoothprint)
+        private const val KEY_RECEIPT_PAPER_WIDTH = "key_receipt_paper_width"
+        private const val KEY_RECEIPT_FEED_LINES = "key_receipt_feed_lines"
+        private const val KEY_RECEIPT_AUTO_CUT = "key_receipt_auto_cut"
+        private const val KEY_RECEIPT_SHOW_QR = "key_receipt_show_qr"
+        private const val KEY_RECEIPT_LAYOUT_STYLE = "key_receipt_layout_style"
+        private const val KEY_RECEIPT_HEADER_SLOGAN = "key_receipt_header_slogan"
+        private const val KEY_RECEIPT_FOOTER_NOTE = "key_receipt_footer_note"
+
         const val ROLE_OWNER = "OWNER"
         const val ROLE_KASIR = "KASIR"
+
+        const val LAYOUT_2_COLUMN = "2_COLUMN"
+        const val LAYOUT_3_COLUMN = "3_COLUMN"
 
         @Volatile
         private var INSTANCE: SessionManager? = null
@@ -100,6 +117,34 @@ class SessionManager private constructor(context: Context) {
     }
 
     // ==========================================
+    // SERVER CLOUD & LOKAL SYNC CONFIG
+    // ==========================================
+    fun saveServerUrl(url: String) {
+        val cleanUrl = if (url.endsWith("/")) url else "$url/"
+        prefs.edit().putString(KEY_SERVER_URL, cleanUrl).apply()
+    }
+
+    fun getServerUrl(): String {
+        return prefs.getString(KEY_SERVER_URL, "http://10.0.2.2:8000/") ?: "http://10.0.2.2:8000/"
+    }
+
+    fun saveAuthToken(token: String?) {
+        prefs.edit().putString(KEY_AUTH_TOKEN, token).apply()
+    }
+
+    fun getAuthToken(): String? {
+        return prefs.getString(KEY_AUTH_TOKEN, null)
+    }
+
+    fun saveLastSyncTime(timestamp: Long) {
+        prefs.edit().putLong(KEY_LAST_SYNC_TIME, timestamp).apply()
+    }
+
+    fun getLastSyncTime(): Long {
+        return prefs.getLong(KEY_LAST_SYNC_TIME, 0L)
+    }
+
+    // ==========================================
     // ATURAN OWNER: STOK OPNAME & NOTIFIKASI DRAFT
     // ==========================================
     fun saveStockAlertRule(threshold: Double, autoDraft: Boolean, supplier: String, reorderQty: Double) {
@@ -125,5 +170,59 @@ class SessionManager private constructor(context: Context) {
 
     fun getAutoReorderQty(): Double {
         return prefs.getFloat(KEY_AUTO_REORDER_QTY, 20.0f).toDouble()
+    }
+
+    // ==========================================
+    // PENGATURAN STRUK & TATA LETAK PRINTER (LAYOUT & PAPER SETTINGS)
+    // ==========================================
+    fun saveReceiptSettings(
+        paperWidth: Int,
+        feedLines: Int,
+        autoCut: Boolean,
+        showQr: Boolean,
+        layoutStyle: String,
+        headerSlogan: String,
+        footerNote: String
+    ) {
+        prefs.edit()
+            .putInt(KEY_RECEIPT_PAPER_WIDTH, paperWidth)
+            .putInt(KEY_RECEIPT_FEED_LINES, feedLines)
+            .putBoolean(KEY_RECEIPT_AUTO_CUT, autoCut)
+            .putBoolean(KEY_RECEIPT_SHOW_QR, showQr)
+            .putString(KEY_RECEIPT_LAYOUT_STYLE, layoutStyle)
+            .putString(KEY_RECEIPT_HEADER_SLOGAN, headerSlogan)
+            .putString(KEY_RECEIPT_FOOTER_NOTE, footerNote)
+            .apply()
+    }
+
+    fun getReceiptPaperWidth(): Int {
+        return prefs.getInt(KEY_RECEIPT_PAPER_WIDTH, 58)
+    }
+
+    fun getReceiptFeedLines(): Int {
+        return prefs.getInt(KEY_RECEIPT_FEED_LINES, 3)
+    }
+
+    fun isReceiptAutoCut(): Boolean {
+        return prefs.getBoolean(KEY_RECEIPT_AUTO_CUT, true)
+    }
+
+    fun isReceiptShowQr(): Boolean {
+        return prefs.getBoolean(KEY_RECEIPT_SHOW_QR, true)
+    }
+
+    fun getReceiptLayoutStyle(): String {
+        return prefs.getString(KEY_RECEIPT_LAYOUT_STYLE, LAYOUT_2_COLUMN) ?: LAYOUT_2_COLUMN
+    }
+
+    fun getReceiptHeaderSlogan(): String {
+        return prefs.getString(KEY_RECEIPT_HEADER_SLOGAN, "Sistem Kasir & Pembukuan UMKM") ?: "Sistem Kasir & Pembukuan UMKM"
+    }
+
+    fun getReceiptFooterNote(): String {
+        return prefs.getString(
+            KEY_RECEIPT_FOOTER_NOTE,
+            "Terima Kasih Atas Kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar"
+        ) ?: "Terima Kasih Atas Kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar"
     }
 }

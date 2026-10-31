@@ -54,6 +54,7 @@ data class TransactionEntity(
     val id: String = UUID.randomUUID().toString(),
     val storeId: String = "default_store",
     val userId: String = "user_1",
+    val cashierName: String? = null,
     val invoiceNumber: String,
     val totalAmount: Double,
     val cashGiven: Double = 0.0,

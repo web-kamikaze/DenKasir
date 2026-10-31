@@ -56,6 +56,10 @@
             android:name=".hardware.printer.PrinterSettingActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.backup.DataManagementActivity"
+            android:exported="true" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

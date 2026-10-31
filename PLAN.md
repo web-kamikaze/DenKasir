@@ -85,7 +85,7 @@ Aplikasi POS & Pembukuan Kasir Warung Kelontong + Produk Digital (Pulsa/PPOB) de
   - Ikon aplikasi modern mesin kasir DenKasir di semua resolusi `mipmap` (`mdpi`, `hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`).
   - Berhasil di-install & aktif di perangkat Android via ADB.
 
-- [ ] **Fase 6: Backend Cloud FastAPI + PostgreSQL + Sync Adapter**
+- [x] **Fase 6: Backend Cloud FastAPI + PostgreSQL + Sync Adapter**
   - Setup API Auth JWT & Multi-toko.
   - Setup API Products, Transactions, BKU & Debts.
   - Setup API Sync Push/Pull Idempotent.

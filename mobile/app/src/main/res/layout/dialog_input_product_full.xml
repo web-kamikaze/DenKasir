@@ -22,6 +22,7 @@
             android:textColor="@color/text_primary" />
 
         <TextView
+            android:id="@+id/tvFormSubtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Lengkapi data barang dan foto produk untuk database lokal warung"
@@ -251,6 +252,7 @@
 
         <!-- Jumlah Stok Awal -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilInitialStock"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
@@ -303,4 +305,5 @@
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
+
 

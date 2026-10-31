@@ -7,9 +7,13 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.denkasir.data.local.dao.*
 import com.denkasir.data.local.entity.*
+import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @Database(
@@ -26,7 +30,7 @@ import java.util.UUID
         StockOpnameEntity::class,
         DigitalConfigEntity::class
     ],
-    version = 5,
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,6 +44,127 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun purchaseOrderDao(): PurchaseOrderDao
     abstract fun stockOpnameDao(): StockOpnameDao
     abstract fun digitalConfigDao(): DigitalConfigDao
+
+    suspend fun ensureSeeded(context: Context) = withContext(Dispatchers.IO) {
+        try {
+            // 1. Initial Store Profile (Toko Bersih)
+            if (storeDao().getStoreCount() == 0) {
+                storeDao().insertStore(
+                    StoreEntity(
+                        id = "default_store",
+                        name = "Toko DenKasir",
+                        address = "",
+                        phone = "",
+                        ownerId = "owner_1"
+                    )
+                )
+            }
+
+            // 2. Initial Users (Akun Owner & Kasir Siap Pakai)
+            if (userDao().getUserCount() == 0) {
+                userDao().insertUsers(
+                    listOf(
+                        UserEntity(
+                            id = "owner_1",
+                            storeId = "default_store",
+                            username = "owner",
+                            fullName = "Pemilik Toko",
+                            role = "OWNER"
+                        ),
+                        UserEntity(
+                            id = "kasir_1",
+                            storeId = "default_store",
+                            username = "kasir",
+                            fullName = "Kasir 1",
+                            role = "KASIR"
+                        )
+                    )
+                )
+            }
+
+            // 3. Initial Digital Config (Saldo Awal 0.0)
+            if (digitalConfigDao().getConfigCount() == 0) {
+                digitalConfigDao().saveConfig(
+                    DigitalConfigEntity(
+                        id = "default_config",
+                        providerName = "OtomaX H2H Server",
+                        balance = 0.0,
+                        isActive = true
+                    )
+                )
+            }
+
+            // 4. Initial BKU Accounts (Chart of Accounts / Kategori Akun Standar)
+            if (bkuAccountDao().getAccountCount() == 0) {
+                bkuAccountDao().insertAccounts(getInitialBkuAccounts())
+            }
+
+            // 5. Data Transaksi, Arus Kas, Hutang, Pembelian, dan Produk Awal:
+            // Kosong secara default agar aplikasi baru bersih dari data fiktif.
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun clearAllData(keepUserAndStore: Boolean = true) = withContext(Dispatchers.IO) {
+        transactionDao().clearTransactionItems()
+        transactionDao().clearTransactions()
+        cashFlowDao().clearCashFlows()
+        debtDao().clearDebts()
+        purchaseOrderDao().clearPurchaseOrders()
+        stockOpnameDao().clearStockOpnames()
+        productDao().clearProducts()
+        if (!keepUserAndStore) {
+            digitalConfigDao().saveConfig(
+                DigitalConfigEntity(
+                    id = "default_config",
+                    providerName = "OtomaX H2H Server",
+                    balance = 0.0,
+                    isActive = true
+                )
+            )
+        }
+    }
+
+    suspend fun seedProductsFromAsset(context: Context) = withContext(Dispatchers.IO) {
+        try {
+            val jsonString = context.assets.open("katalog_minimarket.json").bufferedReader().use { it.readText() }
+            val jsonArray = JsonParser.parseString(jsonString).asJsonArray
+            val products = mutableListOf<ProductEntity>()
+            val now = System.currentTimeMillis()
+
+            for (element in jsonArray) {
+                val obj = element.asJsonObject
+                val p = ProductEntity(
+                    id = if (obj.has("id") && !obj.get("id").isJsonNull) obj.get("id").asString else UUID.randomUUID().toString(),
+                    storeId = if (obj.has("storeId") && !obj.get("storeId").isJsonNull) obj.get("storeId").asString else "default_store",
+                    barcode = if (obj.has("barcode") && !obj.get("barcode").isJsonNull) obj.get("barcode").asString else null,
+                    name = if (obj.has("name") && !obj.get("name").isJsonNull) obj.get("name").asString else "Produk Retail",
+                    category = if (obj.has("category") && !obj.get("category").isJsonNull) obj.get("category").asString else "Pcs",
+                    productType = if (obj.has("productType") && !obj.get("productType").isJsonNull) obj.get("productType").asString else "RETAIL",
+                    costPrice = if (obj.has("costPrice") && !obj.get("costPrice").isJsonNull) obj.get("costPrice").asDouble else 0.0,
+                    sellingPrice = if (obj.has("sellingPrice") && !obj.get("sellingPrice").isJsonNull) obj.get("sellingPrice").asDouble else 0.0,
+                    stock = if (obj.has("stock") && !obj.get("stock").isJsonNull) obj.get("stock").asDouble else 50.0,
+                    minStockAlert = if (obj.has("minStockAlert") && !obj.get("minStockAlert").isJsonNull) obj.get("minStockAlert").asDouble else 5.0,
+                    imagePath = if (obj.has("imagePath") && !obj.get("imagePath").isJsonNull) obj.get("imagePath").asString else null,
+                    providerCode = if (obj.has("providerCode") && !obj.get("providerCode").isJsonNull) obj.get("providerCode").asString else null,
+                    createdAt = now,
+                    updatedAt = now,
+                    syncStatus = "SYNCED"
+                )
+                products.add(p)
+            }
+
+            if (products.isNotEmpty()) {
+                products.chunked(150).forEach { batch ->
+                    productDao().insertProducts(batch)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            productDao().insertProducts(getInitialSampleProducts())
+        }
+    }
 
     companion object {
         @Volatile
@@ -57,63 +182,21 @@ abstract class AppDatabase : RoomDatabase() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
                         CoroutineScope(Dispatchers.IO).launch {
-                            val dbInstance = getDatabase(context)
-                            
-                            // 1. Initial Store Profile
-                            dbInstance.storeDao().insertStore(
-                                StoreEntity(
-                                    id = "default_store",
-                                    name = "DENKASIR UMKM",
-                                    address = "Jl. Pemuda No. 88, Semarang",
-                                    phone = "081234567890",
-                                    ownerId = "owner_1"
-                                )
-                            )
+                            getDatabase(context).ensureSeeded(context)
+                        }
+                    }
 
-                            // 2. Initial Users
-                            dbInstance.userDao().insertUsers(
-                                listOf(
-                                    UserEntity(
-                                        id = "owner_1",
-                                        storeId = "default_store",
-                                        username = "owner",
-                                        fullName = "Pemilik Toko (Owner)",
-                                        role = "OWNER"
-                                    ),
-                                    UserEntity(
-                                        id = "kasir_1",
-                                        storeId = "default_store",
-                                        username = "kasir",
-                                        fullName = "Kasir Utama (Staff)",
-                                        role = "KASIR"
-                                    )
-                                )
-                            )
+                    override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
+                        super.onDestructiveMigration(db)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            getDatabase(context).ensureSeeded(context)
+                        }
+                    }
 
-                            // 3. Initial Products
-                            dbInstance.productDao().insertProducts(getInitialSampleProducts())
-
-                            // 4. Initial Digital Config
-                            dbInstance.digitalConfigDao().saveConfig(
-                                DigitalConfigEntity(
-                                    id = "default_config",
-                                    providerName = "OtomaX H2H Server",
-                                    balance = 2450000.0,
-                                    isActive = true
-                                )
-                            )
-
-                            // 5. Initial BKU Chart of Accounts (COA)
-                            dbInstance.bkuAccountDao().insertAccounts(getInitialBkuAccounts())
-
-                            // 6. Initial Cash Flows (BKU Records)
-                            dbInstance.cashFlowDao().insertCashFlows(getInitialCashFlows())
-
-                            // 7. Initial Debts / Receivables
-                            dbInstance.debtDao().insertDebts(getInitialDebts())
-
-                            // 8. Initial Purchase Orders (Daftar Belanja Image #2)
-                            dbInstance.purchaseOrderDao().insertPurchases(getInitialPurchaseOrders())
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        CoroutineScope(Dispatchers.IO).launch {
+                            getDatabase(context).ensureSeeded(context)
                         }
                     }
                 })
@@ -125,36 +208,69 @@ abstract class AppDatabase : RoomDatabase() {
 
         private fun getInitialBkuAccounts(): List<BkuAccountEntity> {
             return listOf(
-                // Akun Pemasukan (IN)
-                BkuAccountEntity(id = "acc_in_1", accountName = "Penjualan Kasir / Ritel", accountType = "IN", accountCode = "4-1001", isDefault = true),
-                BkuAccountEntity(id = "acc_in_2", accountName = "Pendapatan Pulsa & PPOB", accountType = "IN", accountCode = "4-1002", isDefault = true),
-                BkuAccountEntity(id = "acc_in_3", accountName = "Penerimaan Pelunasan Piutang", accountType = "IN", accountCode = "4-1003", isDefault = true),
-                BkuAccountEntity(id = "acc_in_4", accountName = "Modal Masuk / Tambahan Kas", accountType = "IN", accountCode = "4-1004", isDefault = true),
-                BkuAccountEntity(id = "acc_in_5", accountName = "Pendapatan Komisi & Lain-lain", accountType = "IN", accountCode = "4-1005", isDefault = true),
-
-                // Akun Pengeluaran (OUT)
-                BkuAccountEntity(id = "acc_out_1", accountName = "Belanja Stok Barang / Kulakan", accountType = "OUT", accountCode = "5-1001", isDefault = true),
-                BkuAccountEntity(id = "acc_out_2", accountName = "Top Up Saldo Deposit H2H Pulsa", accountType = "OUT", accountCode = "5-1002", isDefault = true),
-                BkuAccountEntity(id = "acc_out_3", accountName = "Biaya Listrik, Air & Internet Toko", accountType = "OUT", accountCode = "5-1003", isDefault = true),
-                BkuAccountEntity(id = "acc_out_4", accountName = "Gaji & Uang Makan Karyawan", accountType = "OUT", accountCode = "5-1004", isDefault = true),
-                BkuAccountEntity(id = "acc_out_5", accountName = "Sewa Tempat / Bangunan Toko", accountType = "OUT", accountCode = "5-1005", isDefault = true),
-                BkuAccountEntity(id = "acc_out_6", accountName = "Biaya Transportasi & Logistik", accountType = "OUT", accountCode = "5-1006", isDefault = true),
-                BkuAccountEntity(id = "acc_out_7", accountName = "Pembayaran Hutang Supplier", accountType = "OUT", accountCode = "5-1007", isDefault = true),
-                BkuAccountEntity(id = "acc_out_8", accountName = "Biaya Operasional & Perlengkapan", accountType = "OUT", accountCode = "5-1008", isDefault = true)
+                BkuAccountEntity(accountCode = "1001", accountName = "Kas Toko (Laci Kasir)", accountType = "ASET"),
+                BkuAccountEntity(accountCode = "1002", accountName = "Bank BCA Toko", accountType = "ASET"),
+                BkuAccountEntity(accountCode = "1003", accountName = "Saldo Deposit Server H2H Pulsa", accountType = "ASET"),
+                BkuAccountEntity(accountCode = "1004", accountName = "Piutang Usaha (Kasbon Pelanggan)", accountType = "ASET"),
+                BkuAccountEntity(accountCode = "1005", accountName = "Persediaan Barang Dagang", accountType = "ASET"),
+                BkuAccountEntity(accountCode = "2001", accountName = "Hutang Usaha (Supplier Sembako)", accountType = "KEWAJIBAN"),
+                BkuAccountEntity(accountCode = "3001", accountName = "Modal Awal Pemilik", accountType = "MODAL"),
+                BkuAccountEntity(accountCode = "4001", accountName = "Pendapatan Penjualan Retail", accountType = "PENDAPATAN"),
+                BkuAccountEntity(accountCode = "4002", accountName = "Pendapatan Margin PPOB & Pulsa", accountType = "PENDAPATAN"),
+                BkuAccountEntity(accountCode = "5001", accountName = "Beban Pokok Penjualan (HPP Retail)", accountType = "BEBAN"),
+                BkuAccountEntity(accountCode = "5002", accountName = "Beban Operasional Toko (Listrik & Air)", accountType = "BEBAN"),
+                BkuAccountEntity(accountCode = "5003", accountName = "Beban Gaji Kasir", accountType = "BEBAN")
             )
         }
 
         private fun getInitialCashFlows(): List<CashFlowEntity> {
             val now = System.currentTimeMillis()
-            val day = 86400000L
             return listOf(
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "IN", category = "Modal Masuk / Tambahan Kas", amount = 5000000.0, description = "Saldo Kas Awal Toko", createdAt = now - 6 * day),
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "OUT", category = "Belanja Stok Barang / Kulakan", amount = 2200000.0, description = "Kulakan Sembako Grosir", createdAt = now - 5 * day),
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "IN", category = "Penjualan Kasir / Ritel", amount = 3750000.0, description = "Total Penjualan Kasir Shift Pagi", createdAt = now - 4 * day),
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "OUT", category = "Top Up Saldo Deposit H2H Pulsa", amount = 1000000.0, description = "Deposit Saldo Pulsa Server", createdAt = now - 3 * day),
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "IN", category = "Pendapatan Pulsa & PPOB", amount = 1250000.0, description = "Penjualan Pulsa & Token PLN", createdAt = now - 2 * day),
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "OUT", category = "Biaya Listrik, Air & Internet Toko", amount = 350000.0, description = "Bayar Tagihan Listrik Toko", createdAt = now - 1 * day),
-                CashFlowEntity(id = UUID.randomUUID().toString(), flowType = "IN", category = "Penjualan Kasir / Ritel", amount = 4200000.0, description = "Omset Penjualan Kasir Hari Ini", createdAt = now)
+                CashFlowEntity(
+                    id = UUID.randomUUID().toString(),
+                    flowType = "IN",
+                    category = "PENJUALAN",
+                    amount = 1850000.0,
+                    description = "Penjualan Toko Shift Pagi (32 Struk)",
+                    referenceId = null,
+                    createdAt = now - 3600000 * 5
+                ),
+                CashFlowEntity(
+                    id = UUID.randomUUID().toString(),
+                    flowType = "IN",
+                    category = "PENDAPATAN LAIN",
+                    amount = 450000.0,
+                    description = "Komisi Agen PPOB & Token Listrik",
+                    referenceId = null,
+                    createdAt = now - 3600000 * 4
+                ),
+                CashFlowEntity(
+                    id = UUID.randomUUID().toString(),
+                    flowType = "OUT",
+                    category = "OPERASIONAL",
+                    amount = 250000.0,
+                    description = "Pembayaran Listrik Toko Bulan Ini",
+                    referenceId = null,
+                    createdAt = now - 3600000 * 3
+                ),
+                CashFlowEntity(
+                    id = UUID.randomUUID().toString(),
+                    flowType = "OUT",
+                    category = "KULAKAN",
+                    amount = 1200000.0,
+                    description = "Restock Minyak Goreng & Beras (CV. Sumber Makmur)",
+                    referenceId = null,
+                    createdAt = now - 3600000 * 2
+                ),
+                CashFlowEntity(
+                    id = UUID.randomUUID().toString(),
+                    flowType = "IN",
+                    category = "PELUNASAN HUTANG",
+                    amount = 150000.0,
+                    description = "Pelunasan Kasbon Bu Ratna",
+                    referenceId = null,
+                    createdAt = now - 3600000 * 1
+                )
             )
         }
 
@@ -163,33 +279,36 @@ abstract class AppDatabase : RoomDatabase() {
             return listOf(
                 DebtEntity(
                     id = UUID.randomUUID().toString(),
-                    customerName = "Ibu Siti (Warga RT 03)",
-                    customerPhone = "081234567891",
-                    totalDebt = 150000.0,
-                    paidAmount = 50000.0,
+                    customerName = "Bu Siti (Tetangga Toko)",
+                    customerPhone = "081234567890",
+                    totalDebt = 125000.0,
+                    paidAmount = 0.0,
+                    debtType = "PIUTANG",
+                    status = "UNPAID",
+                    dueDate = now + (86400000 * 7),
+                    createdAt = now - 86400000 * 2
+                ),
+                DebtEntity(
+                    id = UUID.randomUUID().toString(),
+                    customerName = "Pak Joko (Ojek Pengkolan)",
+                    customerPhone = "085678901234",
+                    totalDebt = 45000.0,
+                    paidAmount = 20000.0,
+                    debtType = "PIUTANG",
                     status = "PARTIAL",
-                    debtType = "PIUTANG",
-                    createdAt = now - 3 * 86400000L
+                    dueDate = now + (86400000 * 3),
+                    createdAt = now - 86400000 * 1
                 ),
                 DebtEntity(
                     id = UUID.randomUUID().toString(),
-                    customerName = "Pak Joko (Bengkel Depan)",
-                    customerPhone = "081987654321",
-                    totalDebt = 85000.0,
-                    paidAmount = 0.0,
-                    status = "UNPAID",
-                    debtType = "PIUTANG",
-                    createdAt = now - 1 * 86400000L
-                ),
-                DebtEntity(
-                    id = UUID.randomUUID().toString(),
-                    customerName = "Distributor Sembako Jaya",
-                    customerPhone = "082112233445",
-                    totalDebt = 750000.0,
-                    paidAmount = 0.0,
-                    status = "UNPAID",
+                    customerName = "CV. Sumber Makmur (Supplier)",
+                    customerPhone = "082199887766",
+                    totalDebt = 1500000.0,
+                    paidAmount = 500000.0,
                     debtType = "HUTANG",
-                    createdAt = now - 2 * 86400000L
+                    status = "PARTIAL",
+                    dueDate = now + (86400000 * 14),
+                    createdAt = now - 86400000 * 5
                 )
             )
         }
@@ -226,99 +345,26 @@ abstract class AppDatabase : RoomDatabase() {
         private fun getInitialSampleProducts(): List<ProductEntity> {
             return listOf(
                 ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Indomie Goreng",
-                    barcode = "8998866200213",
-                    category = "Pcs",
+                    id = "prod_indomie_goreng",
+                    name = "Indomie Mi Goreng Spesial 85g",
+                    barcode = "8998866500708",
+                    category = "Makanan & Mie",
                     productType = "RETAIL",
-                    costPrice = 2500.0,
-                    sellingPrice = 3000.0,
-                    stock = 50.0
+                    costPrice = 2900.0,
+                    sellingPrice = 3500.0,
+                    stock = 50.0,
+                    imagePath = "8998866500708.jpg"
                 ),
                 ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Gula Pasir 1kg",
-                    barcode = "8991002100012",
-                    category = "Kg",
+                    id = "prod_indomie_soto",
+                    name = "Indomie Kuah Rasa Soto Mie 70g",
+                    barcode = "8998866200301",
+                    category = "Makanan & Mie",
                     productType = "RETAIL",
-                    costPrice = 11500.0,
-                    sellingPrice = 13000.0,
-                    stock = 30.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Minyak Goreng 1L",
-                    barcode = "8992003100025",
-                    category = "Pcs",
-                    productType = "RETAIL",
-                    costPrice = 14000.0,
-                    sellingPrice = 15500.0,
-                    stock = 25.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Susu Kental Manis",
-                    barcode = "8993004100037",
-                    category = "Pcs",
-                    productType = "RETAIL",
-                    costPrice = 7500.0,
-                    sellingPrice = 9000.0,
-                    stock = 40.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Token Listrik PLN 20.000",
-                    barcode = null,
-                    category = "PLN",
-                    productType = "DIGITAL",
-                    costPrice = 20250.0,
-                    sellingPrice = 22500.0,
-                    providerCode = "PLN20",
-                    stock = 0.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Token Listrik PLN 50.000",
-                    barcode = null,
-                    category = "PLN",
-                    productType = "DIGITAL",
-                    costPrice = 50250.0,
-                    sellingPrice = 52500.0,
-                    providerCode = "PLN50",
-                    stock = 0.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Pulsa Telkomsel 10.000",
-                    barcode = null,
-                    category = "Pulsa",
-                    productType = "DIGITAL",
-                    costPrice = 10200.0,
-                    sellingPrice = 12000.0,
-                    providerCode = "TSEL10",
-                    stock = 0.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Pulsa Indosat 10.000",
-                    barcode = null,
-                    category = "Pulsa",
-                    productType = "DIGITAL",
-                    costPrice = 10150.0,
-                    sellingPrice = 12000.0,
-                    providerCode = "ISAT10",
-                    stock = 0.0
-                ),
-                ProductEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = "Paket Data Telkomsel 5GB",
-                    barcode = null,
-                    category = "Paket Data",
-                    productType = "DIGITAL",
-                    costPrice = 25000.0,
-                    sellingPrice = 28000.0,
-                    providerCode = "DATA_TSEL5",
-                    stock = 0.0
+                    costPrice = 2900.0,
+                    sellingPrice = 3500.0,
+                    stock = 40.0,
+                    imagePath = "8998866200301.jpg"
                 )
             )
         }

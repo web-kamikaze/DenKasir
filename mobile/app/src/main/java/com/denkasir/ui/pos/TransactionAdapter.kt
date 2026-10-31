@@ -49,6 +49,24 @@ class TransactionAdapter(
             val context = binding.root.context
             binding.tvTrxInvoice.text = trx.invoiceNumber
             binding.tvTrxDate.text = dateFormat.format(Date(trx.createdAt))
+            val cashierDisplayName = if (!trx.cashierName.isNullOrBlank()) {
+                trx.cashierName
+            } else if (trx.userId.contains("owner", ignoreCase = true)) {
+                "Pemilik Toko (Owner)"
+            } else {
+                "Kasir 1 (Staff)"
+            }
+
+            if (cashierDisplayName.contains("Owner", ignoreCase = true) || trx.userId.contains("owner", ignoreCase = true)) {
+                binding.tvCashierBadge.text = "?? " + cashierDisplayName
+                binding.tvCashierBadge.setTextColor(ContextCompat.getColor(context, R.color.primary_purple))
+                binding.tvCashierBadge.setBackgroundResource(R.drawable.bg_badge_curah)
+            } else {
+                binding.tvCashierBadge.text = "?? " + cashierDisplayName
+                binding.tvCashierBadge.setTextColor(android.graphics.Color.parseColor("#0284C7"))
+                binding.tvCashierBadge.setBackgroundResource(R.drawable.bg_chip_selected)
+            }
+
             binding.tvCustomerName.text = trx.customerName ?: "Pelanggan Warung"
             binding.tvTrxTotalAmount.text = CurrencyUtils.formatRupiah(trx.totalAmount)
 

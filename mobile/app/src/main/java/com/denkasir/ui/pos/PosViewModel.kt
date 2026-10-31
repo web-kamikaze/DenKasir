@@ -40,60 +40,8 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     val allProducts = productDao.getAllProducts()
 
     init {
-        // Populate default cart items matching the user's screenshot
-        viewModelScope.launch {
-            val defaultItems = listOf(
-                CartItem(
-                    product = ProductEntity(
-                        id = "indomie_1",
-                        name = "Indomie Goreng",
-                        category = "Pcs",
-                        productType = "RETAIL",
-                        sellingPrice = 3000.0,
-                        costPrice = 2500.0,
-                        stock = 50.0
-                    ),
-                    quantity = 2.0
-                ),
-                CartItem(
-                    product = ProductEntity(
-                        id = "gula_1",
-                        name = "Gula Pasir 1kg",
-                        category = "Kg",
-                        productType = "RETAIL",
-                        sellingPrice = 13000.0,
-                        costPrice = 11500.0,
-                        stock = 30.0
-                    ),
-                    quantity = 1.0
-                ),
-                CartItem(
-                    product = ProductEntity(
-                        id = "minyak_1",
-                        name = "Minyak Goreng 1L",
-                        category = "Pcs",
-                        productType = "RETAIL",
-                        sellingPrice = 15500.0,
-                        costPrice = 14000.0,
-                        stock = 25.0
-                    ),
-                    quantity = 1.0
-                ),
-                CartItem(
-                    product = ProductEntity(
-                        id = "susu_1",
-                        name = "Susu Kental Manis",
-                        category = "Pcs",
-                        productType = "RETAIL",
-                        sellingPrice = 9000.0,
-                        costPrice = 7500.0,
-                        stock = 40.0
-                    ),
-                    quantity = 1.0
-                )
-            )
-            _cartItems.value = defaultItems
-        }
+        // Keranjang kasir mulai bersih (kosong) saat aplikasi baru dijalankan
+        _cartItems.value = emptyList()
     }
 
     fun setCategory(category: String) {
@@ -173,8 +121,14 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
             val invoiceNo = "TRX-${dateFormat.format(Date())}"
             val trxId = UUID.randomUUID().toString()
 
+            val session = SessionManager.getInstance(getApplication())
+            val currentUserId = session.getCurrentUserId()
+            val currentCashierName = session.getCurrentFullName()
+
             val transaction = TransactionEntity(
                 id = trxId,
+                userId = currentUserId,
+                cashierName = currentCashierName,
                 invoiceNumber = invoiceNo,
                 totalAmount = totalAmount,
                 cashGiven = cashGiven,
@@ -239,44 +193,15 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Generate Plain Text Receipt
-            val session = SessionManager.getInstance(getApplication())
-            val storeName = session.getStoreName()
-            val storeAddress = session.getStoreAddress()
-
-            val receiptBuilder = StringBuilder()
-            receiptBuilder.append("================================\n")
-            receiptBuilder.append("         $storeName         \n")
-            receiptBuilder.append("     $storeAddress     \n")
-            receiptBuilder.append("================================\n")
-            receiptBuilder.append("No    : $invoiceNo\n")
-            receiptBuilder.append("Waktu : ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())}\n")
-            receiptBuilder.append("Metode: $paymentMethod\n")
-            receiptBuilder.append("--------------------------------\n")
-            currentCart.forEach { item ->
-                val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
-                receiptBuilder.append("${item.product.name}\n")
-                if (item.targetPhone != null) {
-                    receiptBuilder.append("  No: ${item.targetPhone}\n")
-                }
-                if (item.snNumber != null) {
-                    receiptBuilder.append("  SN: ${item.snNumber}\n")
-                }
-                receiptBuilder.append("  $qtyStr x ${CurrencyUtils.formatNumberOnly(item.product.sellingPrice)} = ${CurrencyUtils.formatNumberOnly(item.subtotal)}\n")
-            }
-            receiptBuilder.append("--------------------------------\n")
-            receiptBuilder.append("TOTAL BAYAR : ${CurrencyUtils.formatRupiah(totalAmount)}\n")
-            if (paymentMethod == "CASH") {
-                receiptBuilder.append("BAYAR TUNAI : ${CurrencyUtils.formatRupiah(cashGiven)}\n")
-                receiptBuilder.append("KEMBALIAN   : ${CurrencyUtils.formatRupiah(change)}\n")
-            }
-            receiptBuilder.append("================================\n")
-            receiptBuilder.append("  Terima Kasih Atas Kunjungan  \n")
-            receiptBuilder.append("          Anda di Toko         \n")
-            receiptBuilder.append("================================\n")
+            // Generate Responsive & Adaptive Receipt
+            val receiptText = com.denkasir.utils.ReceiptFormatterUtils.formatTransactionReceipt(
+                context = getApplication(),
+                transaction = transaction,
+                items = trxItems
+            )
 
             clearCart()
-            onSuccess(transaction, receiptBuilder.toString())
+            onSuccess(transaction, receiptText)
         }
     }
 }

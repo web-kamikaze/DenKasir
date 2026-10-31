@@ -22,6 +22,8 @@ import com.denkasir.databinding.*
 import com.denkasir.hardware.printer.PrinterSettingActivity
 import com.denkasir.ui.stockopname.StockOpnameActivity
 import com.denkasir.utils.CurrencyUtils
+import com.denkasir.utils.DataExporterImporter
+import java.util.Locale
 import com.denkasir.utils.SessionManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +40,9 @@ class ReportsFragment : Fragment() {
 
     private lateinit var appDatabase: AppDatabase
     private lateinit var cashFlowAdapter: CashFlowAdapter
+    private var latestTotalRevenue = 0.0
+    private var latestTotalHpp = 0.0
+    private var latestGrossProfit = 0.0
     private lateinit var debtAdapter: DebtAdapter
     private lateinit var bkuAccountAdapter: BkuAccountAdapter
 
@@ -235,6 +240,22 @@ class ReportsFragment : Fragment() {
             }
         }
 
+        // 1. Amati Rincian Penjualan & Hitung Laba Kotor Riil Otomatis
+        viewLifecycleOwner.lifecycleScope.launch {
+            appDatabase.transactionDao().getAllTransactionItemsFlow().collectLatest { items ->
+                latestTotalRevenue = items.sumOf { it.subtotal }
+                latestTotalHpp = items.sumOf { it.costPrice * it.quantity }
+                latestGrossProfit = latestTotalRevenue - latestTotalHpp
+
+                binding.tvOmzetValue.text = CurrencyUtils.formatRupiah(latestTotalRevenue)
+                binding.tvHppValue.text = "- " + CurrencyUtils.formatRupiah(latestTotalHpp)
+                binding.tvGrossProfitValue.text = (if (latestGrossProfit >= 0) "+ " else "") + CurrencyUtils.formatRupiah(latestGrossProfit)
+
+                recalculateProfitAndLoss()
+            }
+        }
+
+        // 2. Amati Buku Kas Umum (Arus Kas Likuiditas Laci Kasir)
         viewLifecycleOwner.lifecycleScope.launch {
             appDatabase.cashFlowDao().getAllCashFlows().collectLatest { flows ->
                 allCashFlows = flows
@@ -248,6 +269,8 @@ class ReportsFragment : Fragment() {
                 binding.tvKasKeluarValue.text = CurrencyUtils.formatRupiah(totalOut)
                 binding.tvLabaBersihValue.text = CurrencyUtils.formatRupiah(netCash)
                 binding.tvLabaBersihValue.setTextColor(if (netCash >= 0) Color.parseColor("#10B981") else Color.parseColor("#EF4444"))
+
+                recalculateProfitAndLoss()
             }
         }
 
@@ -607,19 +630,103 @@ class ReportsFragment : Fragment() {
         }
     }
 
-    private fun exportBkuReport() {
-        val totalIn = allCashFlows.filter { it.flowType == "IN" }.sumOf { it.amount }
-        val totalOut = allCashFlows.filter { it.flowType == "OUT" }.sumOf { it.amount }
-        val net = totalIn - totalOut
+    private fun recalculateProfitAndLoss() {
+        val opExpenses = allCashFlows.filter { 
+            it.flowType == "OUT" && (
+                it.category.contains("OPERASIONAL", ignoreCase = true) || 
+                it.category.contains("BEBAN", ignoreCase = true) ||
+                it.category.contains("LISTRIK", ignoreCase = true) ||
+                it.category.contains("GAJI", ignoreCase = true) ||
+                it.category.contains("SEWA", ignoreCase = true)
+            )
+        }.sumOf { it.amount }
 
+        val realNetProfit = latestGrossProfit - opExpenses
+        val marginPct = if (latestTotalRevenue > 0) (latestGrossProfit / latestTotalRevenue) * 100.0 else 0.0
+
+        binding.tvOperationalExpenseValue.text = "- " + CurrencyUtils.formatRupiah(opExpenses)
+        binding.tvRealNetProfitValue.text = (if (realNetProfit >= 0) "+ " else "") + CurrencyUtils.formatRupiah(realNetProfit)
+        binding.tvRealNetProfitValue.setTextColor(if (realNetProfit >= 0) Color.parseColor("#059669") else Color.parseColor("#DC2626"))
+        binding.tvMarginPercentBadge.text = String.format(Locale.US, "Margin: %.1f%%", marginPct)
+    }
+
+    private fun exportBkuReport() {
+        val options = arrayOf(
+            "Ekspor Penjualan & Laba (.xlsx)",
+            "Ekspor Penjualan & Laba (.csv)",
+            "Ekspor Buku Kas Umum BKU (.xlsx)",
+            "Buka Pusat Pengelolaan Data Lengkap"
+        )
         AlertDialog.Builder(requireContext())
-            .setTitle("Ekspor Laporan BKU (.PDF / .XLSX)")
-            .setMessage("Ringkasan Buku Kas:\n- Total Kas Masuk: ${CurrencyUtils.formatRupiah(totalIn)}\n- Total Kas Keluar: ${CurrencyUtils.formatRupiah(totalOut)}\n- Saldo Kas Bersih: ${CurrencyUtils.formatRupiah(net)}\n- Total Mutasi: ${allCashFlows.size} transaksi\n\nSiap diunduh ke folder Dokumen perangkat.")
-            .setPositiveButton("Simpan Dokumen") { _, _ ->
-                Toast.makeText(requireContext(), "Laporan Buku Kas Umum berhasil disimpan ke Dokumen!", Toast.LENGTH_LONG).show()
+            .setTitle("Ekspor Laporan & Pengelolaan Data")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> exportSalesProfitReport(asXlsx = true)
+                    1 -> exportSalesProfitReport(asXlsx = false)
+                    2 -> exportBkuSpreadsheet()
+                    3 -> startActivity(Intent(requireContext(), com.denkasir.ui.backup.DataManagementActivity::class.java))
+                }
             }
             .setNegativeButton("Tutup", null)
             .show()
+    }
+
+    private fun exportSalesProfitReport(asXlsx: Boolean) {
+        lifecycleScope.launch {
+            try {
+                val transactions = withContext(Dispatchers.IO) { appDatabase.transactionDao().getAllTransactionsList() }
+                val allItems = withContext(Dispatchers.IO) { appDatabase.transactionDao().getAllTransactionItems() }
+
+                if (transactions.isEmpty()) {
+                    Toast.makeText(requireContext(), "Belum ada transaksi penjualan untuk diekspor.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val file = withContext(Dispatchers.IO) {
+                    if (asXlsx) {
+                        DataExporterImporter.exportSalesAndProfitToXlsx(requireContext(), transactions, allItems)
+                    } else {
+                        DataExporterImporter.exportSalesAndProfitToCsv(requireContext(), transactions, allItems)
+                    }
+                }
+
+                val mime = if (asXlsx) "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" else "text/csv"
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Ekspor Selesai!")
+                    .setMessage("Berkas berhasil disimpan di:\n${file.name}\n\nIngin membagikan laporan sekarang?")
+                    .setPositiveButton("Bagikan Berkas") { _, _ ->
+                        DataExporterImporter.shareExportedFile(requireContext(), file, mime, "Laporan Penjualan & Laba DenKasir")
+                    }
+                    .setNegativeButton("Selesai", null)
+                    .show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Gagal ekspor: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun exportBkuSpreadsheet() {
+        lifecycleScope.launch {
+            try {
+                if (allCashFlows.isEmpty()) {
+                    Toast.makeText(requireContext(), "Belum ada catatan mutasi kas BKU.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val file = withContext(Dispatchers.IO) {
+                    DataExporterImporter.exportCashFlowToXlsx(requireContext(), allCashFlows)
+                }
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Ekspor BKU Berhasil!")
+                    .setMessage("Berkas berhasil disimpan:\n${file.name}\n\nIngin membagikan laporan sekarang?")
+                    .setPositiveButton("Bagikan Berkas") { _, _ ->
+                        DataExporterImporter.shareExportedFile(requireContext(), file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Laporan Buku Kas Umum")
+                    }
+                    .setNegativeButton("Selesai", null)
+                    .show()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Gagal ekspor BKU: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun showDeleteConfirmDialog(title: String, message: String, onConfirm: () -> Unit) {

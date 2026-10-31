@@ -122,9 +122,7 @@ class StockOpnameActivity : AppCompatActivity() {
             scanLauncher.launch(intent)
         }
 
-        binding.btnInputManualOpname.setOnClickListener {
-            Toast.makeText(this, "Klik nama produk pada daftar untuk memasukkan stok fisik riil", Toast.LENGTH_SHORT).show()
-        }
+
 
         binding.chipSemua.setOnClickListener {
             activeFilter = "ALL"
@@ -184,7 +182,7 @@ class StockOpnameActivity : AppCompatActivity() {
             matchQuery && matchCategory
         }
         adapter.submitList(filtered)
-        binding.tvDiperiksaCount.text = "${filtered.size} diperiksa"
+        val nf = java.text.NumberFormat.getNumberInstance(java.util.Locale("in", "ID")); binding.tvDiperiksaCount.text = "${nf.format(filtered.size)} produk"
     }
 
     private fun updateMetrics() {
@@ -193,13 +191,13 @@ class StockOpnameActivity : AppCompatActivity() {
         val selisih = allItems.count { !it.isMatched }
         val progres = if (total > 0) ((total - selisih) * 100 / total) else 100
 
-        binding.tvTotalProdukOpname.text = total.toString()
-        binding.tvCocokOpname.text = cocok.toString()
-        binding.tvSelisihOpname.text = selisih.toString()
+        val nf = java.text.NumberFormat.getNumberInstance(java.util.Locale("in", "ID")); binding.tvTotalProdukOpname.text = nf.format(total)
+        binding.tvCocokOpname.text = nf.format(cocok)
+        binding.tvSelisihOpname.text = nf.format(selisih)
         binding.tvProgresOpname.text = "$progres%"
         binding.progressOpname.progress = progres
 
-        binding.chipSemua.text = "Semua ($total)"
+        binding.chipSemua.text = "Semua (${nf.format(total)})"
         binding.chipSelisih.text = "Selisih ($selisih)"
         binding.chipCocok.text = "Cocok ($cocok)"
     }

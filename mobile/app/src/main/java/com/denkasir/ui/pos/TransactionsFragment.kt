@@ -22,7 +22,9 @@ import com.denkasir.data.local.entity.TransactionItemEntity
 import com.denkasir.databinding.DialogInputPurchaseBinding
 import com.denkasir.databinding.FragmentTransactionsBinding
 import com.denkasir.hardware.printer.BluetoothPrinterDriver
+import com.denkasir.hardware.printer.PrinterSettingActivity
 import com.denkasir.utils.CurrencyUtils
+import com.denkasir.utils.ReceiptFormatterUtils
 import com.denkasir.utils.SessionManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +47,7 @@ class TransactionsFragment : Fragment() {
     private lateinit var transactionAdapter: TransactionAdapter
 
     private var activeTab = "DRAFT" // DRAFT, DIPESAN, SELESAI, KASIR
+    private var cashierFilter = "ALL" // ALL, STAFF, OWNER
 
     private var allPurchases: List<PurchaseOrderEntity> = emptyList()
     private var allTransactions: List<TransactionEntity> = emptyList()
@@ -64,6 +67,7 @@ class TransactionsFragment : Fragment() {
 
         setupAdapters()
         setupSubTabs()
+        setupCashierFilters()
         setupListeners()
         observeData()
     }
@@ -128,13 +132,78 @@ class TransactionsFragment : Fragment() {
         binding.tvTabKasirLabel.paint.isFakeBoldText = (tab == "KASIR")
 
         if (tab == "KASIR") {
+            binding.layoutCashierFilterBar.visibility = View.VISIBLE
             binding.rvPurchaseOrdersList.visibility = View.GONE
             binding.rvCashierTransactionsList.visibility = View.VISIBLE
-            binding.tvEmptyMessage.visibility = if (allTransactions.isEmpty()) View.VISIBLE else View.GONE
+            binding.btnAddNewPurchase.visibility = View.GONE
+            filterAndDisplayCashierTransactions()
         } else {
+            binding.layoutCashierFilterBar.visibility = View.GONE
             binding.rvPurchaseOrdersList.visibility = View.VISIBLE
             binding.rvCashierTransactionsList.visibility = View.GONE
+            binding.btnAddNewPurchase.visibility = View.VISIBLE
             filterPurchases()
+        }
+    }
+
+    private fun setupCashierFilters() {
+        binding.chipFilterAllCashiers.setOnClickListener {
+            setCashierFilter("ALL")
+        }
+        binding.chipFilterStaffOnly.setOnClickListener {
+            setCashierFilter("STAFF")
+        }
+        binding.chipFilterOwnerOnly.setOnClickListener {
+            setCashierFilter("OWNER")
+        }
+    }
+
+    private fun setCashierFilter(filter: String) {
+        cashierFilter = filter
+        val context = requireContext()
+
+        // Reset Chips Style
+        binding.chipFilterAllCashiers.setBackgroundResource(if (filter == "ALL") R.drawable.bg_category_card_selected else R.drawable.bg_chip_unselected)
+        binding.chipFilterAllCashiers.setTextColor(if (filter == "ALL") Color.WHITE else ContextCompat.getColor(context, R.color.text_secondary))
+        binding.chipFilterAllCashiers.paint.isFakeBoldText = (filter == "ALL")
+
+        binding.chipFilterStaffOnly.setBackgroundResource(if (filter == "STAFF") R.drawable.bg_category_card_selected else R.drawable.bg_chip_unselected)
+        binding.chipFilterStaffOnly.setTextColor(if (filter == "STAFF") Color.WHITE else ContextCompat.getColor(context, R.color.text_secondary))
+        binding.chipFilterStaffOnly.paint.isFakeBoldText = (filter == "STAFF")
+
+        binding.chipFilterOwnerOnly.setBackgroundResource(if (filter == "OWNER") R.drawable.bg_category_card_selected else R.drawable.bg_chip_unselected)
+        binding.chipFilterOwnerOnly.setTextColor(if (filter == "OWNER") Color.WHITE else ContextCompat.getColor(context, R.color.text_secondary))
+        binding.chipFilterOwnerOnly.paint.isFakeBoldText = (filter == "OWNER")
+
+        filterAndDisplayCashierTransactions()
+    }
+
+    private fun filterAndDisplayCashierTransactions() {
+        val filtered = when (cashierFilter) {
+            "STAFF" -> allTransactions.filter { trx ->
+                val name = trx.cashierName ?: ""
+                !name.contains("Owner", ignoreCase = true) && !trx.userId.contains("owner", ignoreCase = true)
+            }
+            "OWNER" -> allTransactions.filter { trx ->
+                val name = trx.cashierName ?: ""
+                name.contains("Owner", ignoreCase = true) || trx.userId.contains("owner", ignoreCase = true)
+            }
+            else -> allTransactions
+        }
+
+        transactionAdapter.submitList(filtered)
+        binding.tvEmptyMessage.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+
+        // Update Summary Card
+        val totalOmset = filtered.sumOf { it.totalAmount }
+        val count = filtered.size
+        binding.tvSummaryCashierTotalAmount.text = CurrencyUtils.formatRupiah(totalOmset)
+        binding.tvSummaryCashierTrxCount.text = "$count Transaksi"
+
+        binding.tvSummaryCashierFilterTitle.text = when (cashierFilter) {
+            "STAFF" -> "Omset Transaksi Kasir (Staff)"
+            "OWNER" -> "Omset Transaksi Pemilik (Owner)"
+            else -> "Total Omset Semua Akun Kasir"
         }
     }
 
@@ -161,9 +230,8 @@ class TransactionsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             appDatabase.transactionDao().getAllTransactions().collectLatest { trxs ->
                 allTransactions = trxs
-                transactionAdapter.submitList(trxs)
                 if (activeTab == "KASIR") {
-                    binding.tvEmptyMessage.visibility = if (trxs.isEmpty()) View.VISIBLE else View.GONE
+                    filterAndDisplayCashierTransactions()
                 }
             }
         }
@@ -197,52 +265,24 @@ class TransactionsFragment : Fragment() {
             val items = dialogBinding.etPurchaseItemCount.text.toString().toIntOrNull() ?: 1
             val total = dialogBinding.etPurchaseTotalAmount.text.toString().toDoubleOrNull() ?: 0.0
 
-            if (name.isEmpty()) {
-                Toast.makeText(requireContext(), "Nama supplier / toko wajib diisi!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            if (total <= 0) {
-                Toast.makeText(requireContext(), "Masukkan total nominal belanja yang valid!", Toast.LENGTH_SHORT).show()
+            if (name.isBlank()) {
+                Toast.makeText(requireContext(), "Nama supplier / distributor wajib diisi!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val status = when (dialogBinding.rgPurchaseStatus.checkedRadioButtonId) {
-                R.id.rbStatusDipesan -> "Dipesan"
-                R.id.rbStatusSelesai -> "Selesai"
-                else -> "Draft"
-            }
-
-            val newPO = PurchaseOrderEntity(
-                id = UUID.randomUUID().toString(),
+            val po = PurchaseOrderEntity(
                 supplierName = name,
                 dateText = todayStr,
                 itemCount = items,
                 totalAmount = total,
-                status = status,
-                createdAt = System.currentTimeMillis()
+                status = "Draft"
             )
 
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                appDatabase.purchaseOrderDao().insertPurchase(newPO)
-
-                // Jika status selesai, otomatis catat ke Buku Kas Umum (BKU) sebagai pengeluaran belanja stok
-                if (status == "Selesai") {
-                    appDatabase.cashFlowDao().insertCashFlow(
-                        CashFlowEntity(
-                            id = UUID.randomUUID().toString(),
-                            flowType = "OUT",
-                            category = "Belanja Stok Barang / Kulakan",
-                            amount = total,
-                            description = "Belanja $items item dari $name",
-                            referenceId = newPO.id,
-                            createdAt = System.currentTimeMillis()
-                        )
-                    )
-                }
-
+                appDatabase.purchaseOrderDao().insertPurchase(po)
                 withContext(Dispatchers.Main) {
                     dialog.dismiss()
-                    Toast.makeText(requireContext(), "Daftar belanja '$name' ($status) berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Draft belanja berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -252,11 +292,13 @@ class TransactionsFragment : Fragment() {
 
     private fun showPurchaseDetailDialog(po: PurchaseOrderEntity) {
         val statuses = arrayOf("Draft", "Dipesan", "Selesai")
+        val currentIndex = statuses.indexOf(po.status).coerceAtLeast(0)
+
         AlertDialog.Builder(requireContext())
-            .setTitle(po.supplierName)
-            .setMessage("Tanggal: ${po.dateText}\nJumlah Item: ${po.itemCount} item\nTotal Belanja: ${CurrencyUtils.formatRupiah(po.totalAmount)}\nStatus Saat Ini: ${po.status}\n\nPilih status baru:")
-            .setItems(statuses) { _, which ->
+            .setTitle("Ubah Status Belanja: ${po.supplierName}")
+            .setSingleChoiceItems(statuses, currentIndex) { dialog, which ->
                 val newStatus = statuses[which]
+                dialog.dismiss()
                 if (newStatus != po.status) {
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                         appDatabase.purchaseOrderDao().updatePurchase(po.copy(status = newStatus))
@@ -305,23 +347,34 @@ class TransactionsFragment : Fragment() {
                 appDatabase.transactionDao().getTransactionItems(trx.id)
             }
 
+            val cashierName = if (!trx.cashierName.isNullOrBlank()) {
+                trx.cashierName
+            } else if (trx.userId.contains("owner", ignoreCase = true)) {
+                "Pemilik Toko (Owner)"
+            } else {
+                "Kasir 1 (Staff)"
+            }
+
             val details = StringBuilder()
             val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("in", "ID"))
-            details.append("No. Nota  : ${trx.invoiceNumber}\n")
-            details.append("Waktu     : ${dateFormat.format(Date(trx.createdAt))}\n")
-            details.append("Pelanggan : ${trx.customerName ?: "Pelanggan Warung"}\n")
-            details.append("Metode    : ${trx.paymentMethod}\n")
+            details.append("No. Nota    : ${trx.invoiceNumber}\n")
+            details.append("Waktu       : ${dateFormat.format(Date(trx.createdAt))}\n")
+            details.append("Akun Kasir  : $cashierName\n")
+            details.append("ID Pengguna : ${trx.userId}\n")
+            details.append("Pelanggan   : ${trx.customerName ?: "Pelanggan Warung"}\n")
+            details.append("Pembayaran  : ${trx.paymentMethod}\n")
             details.append("--------------------------------\n")
 
             items.forEach { item ->
-                details.append("• ${item.productName}\n")
+                details.append("- ${item.productName}\n")
                 if (item.targetPhoneNumber != null) {
                     details.append("  Tujuan : ${item.targetPhoneNumber}\n")
                 }
                 if (item.snNumber != null) {
                     details.append("  SN     : ${item.snNumber}\n")
                 }
-                details.append("  ${item.quantity.toInt()} x ${CurrencyUtils.formatNumberOnly(item.sellingPrice)} = ${CurrencyUtils.formatNumberOnly(item.subtotal)}\n")
+                val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
+                details.append("  $qtyStr x ${CurrencyUtils.formatNumberOnly(item.sellingPrice)} = ${CurrencyUtils.formatNumberOnly(item.subtotal)}\n")
             }
 
             details.append("--------------------------------\n")
@@ -343,15 +396,30 @@ class TransactionsFragment : Fragment() {
     }
 
     private fun printTransactionReceipt(trx: TransactionEntity) {
+        val currentContext = context ?: return
         lifecycleScope.launch {
-            Toast.makeText(requireContext(), "Mengirim struk #${trx.invoiceNumber} ke printer...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(currentContext, "Mengirim struk #" + trx.invoiceNumber + " ke printer...", Toast.LENGTH_SHORT).show()
             val items = withContext(Dispatchers.IO) {
                 appDatabase.transactionDao().getTransactionItems(trx.id)
             }
-            val receiptText = buildReceiptText(trx, items)
-            val success = BluetoothPrinterDriver.printReceipt("00:11:22:33:44:55", receiptText)
-            if (!success) {
-                Toast.makeText(requireContext(), "Printer thermal belum terhubung. Bagikan via WhatsApp.", Toast.LENGTH_SHORT).show()
+            val receiptBytes = ReceiptFormatterUtils.buildEscPosReceiptBytes(currentContext, trx, items)
+            val result = BluetoothPrinterDriver.printReceipt(currentContext, receiptBytes)
+            when (result) {
+                is BluetoothPrinterDriver.PrintResult.Success -> {
+                    Toast.makeText(currentContext, "Struk #" + trx.invoiceNumber + " berhasil dicetak!", Toast.LENGTH_SHORT).show()
+                }
+                is BluetoothPrinterDriver.PrintResult.Error -> {
+                    if (isAdded) {
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Gagal Mencetak Struk")
+                            .setMessage(result.message + "\n\nApakah Anda ingin membuka Pengaturan Printer Bluetooth?")
+                            .setPositiveButton("Buka Pengaturan") { _, _ ->
+                                startActivity(Intent(requireContext(), PrinterSettingActivity::class.java))
+                            }
+                            .setNegativeButton("Tutup", null)
+                            .show()
+                    }
+                }
             }
         }
     }
@@ -375,41 +443,12 @@ class TransactionsFragment : Fragment() {
     }
 
     private fun buildReceiptText(trx: TransactionEntity, items: List<TransactionItemEntity>): String {
-        val session = SessionManager.getInstance(requireContext())
-        val storeName = session.getStoreName()
-        val storeAddress = session.getStoreAddress()
-
-        val sb = StringBuilder()
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-        sb.append("================================\n")
-        sb.append("         $storeName         \n")
-        sb.append("     $storeAddress     \n")
-        sb.append("================================\n")
-        sb.append("No    : ${trx.invoiceNumber}\n")
-        sb.append("Waktu : ${dateFormat.format(Date(trx.createdAt))}\n")
-        sb.append("Metode: ${trx.paymentMethod}\n")
-        sb.append("--------------------------------\n")
-        items.forEach { item ->
-            sb.append("${item.productName}\n")
-            if (item.targetPhoneNumber != null) {
-                sb.append("  No: ${item.targetPhoneNumber}\n")
-            }
-            if (item.snNumber != null) {
-                sb.append("  SN: ${item.snNumber}\n")
-            }
-            sb.append("  ${item.quantity.toInt()} x ${CurrencyUtils.formatNumberOnly(item.sellingPrice)} = ${CurrencyUtils.formatNumberOnly(item.subtotal)}\n")
-        }
-        sb.append("--------------------------------\n")
-        sb.append("TOTAL : ${CurrencyUtils.formatRupiah(trx.totalAmount)}\n")
-        if (trx.paymentMethod == "CASH") {
-            sb.append("BAYAR : ${CurrencyUtils.formatRupiah(trx.cashGiven)}\n")
-            sb.append("KEMBALI: ${CurrencyUtils.formatRupiah(trx.changeAmount)}\n")
-        }
-        sb.append("================================\n")
-        sb.append("    Terima Kasih Atas          \n")
-        sb.append("    Kunjungan Anda!            \n")
-        sb.append("================================\n")
-        return sb.toString()
+        val currentContext = context ?: return ""
+        return ReceiptFormatterUtils.formatTransactionReceipt(
+            context = currentContext,
+            transaction = trx,
+            items = items
+        )
     }
 
     override fun onDestroyView() {

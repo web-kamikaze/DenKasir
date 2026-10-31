@@ -110,13 +110,81 @@
 
     </LinearLayout>
 
+    <!-- Kotak Pencarian Produk & Layanan -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardSearchBar"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/productTypeTabs"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_search"
+                app:tint="@color/text_secondary" />
+
+            <EditText
+                android:id="@+id/etSearchProduct"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:background="@null"
+                android:hint="Cari nama atau barcode produk..."
+                android:textColorHint="@color/text_muted"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:imeOptions="actionSearch"
+                android:singleLine="true" />
+
+            <ImageButton
+                android:id="@+id/btnClearSearch"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close"
+                app:tint="@color/text_muted"
+                android:scaleType="centerInside"
+                android:visibility="gone"
+                android:contentDescription="Hapus pencarian" />
+
+            <ImageButton
+                android:id="@+id/btnScanSearchBarcode"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_barcode"
+                app:tint="#3E24E2"
+                android:scaleType="centerInside"
+                android:layout_marginStart="4dp"
+                android:contentDescription="Scan Barcode untuk Cari" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
     <!-- Main Container -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:orientation="vertical"
-        android:padding="16dp"
-        app:layout_constraintTop_toBottomOf="@id/productTypeTabs"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toBottomOf="@id/cardSearchBar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -141,7 +209,7 @@
                     android:id="@+id/tvDepositLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="💳 Saldo Deposit Server (Pulsa &amp; PLN)"
+                    android:text="Saldo Deposit Server (Pulsa &amp; PLN)"
                     android:textColor="#C7D2FE"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -164,7 +232,7 @@
                     android:id="@+id/tvDepositProviderStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Server: OtomaX H2H • Siap Transaksi"
+                    android:text="Server: OtomaX H2H - Siap Transaksi"
                     android:textColor="#E0E7FF"
                     android:textSize="11sp"
                     android:layout_marginTop="4dp"
@@ -187,6 +255,44 @@
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>
+
+        <!-- Empty State Container -->
+        <LinearLayout
+            android:id="@+id/layoutEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:src="@drawable/ic_search"
+                app:tint="@color/text_muted" />
+
+            <TextView
+                android:id="@+id/tvEmptyStateTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Produk Tidak Ditemukan"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:layout_marginTop="12dp" />
+
+            <TextView
+                android:id="@+id/tvEmptyStateMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Coba gunakan kata kunci pencarian yang lain."
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:textAlignment="center"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
 
         <!-- RecyclerView for Retail (Physical Stock) -->
         <androidx.recyclerview.widget.RecyclerView

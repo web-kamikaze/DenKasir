@@ -34,7 +34,7 @@
             android:layout_marginStart="14dp"
             android:layout_marginEnd="8dp"
             app:layout_constraintStart_toEndOf="@id/ivDigitalIcon"
-            app:layout_constraintEnd_toStartOf="@id/btnDeleteDigital"
+            app:layout_constraintEnd_toStartOf="@id/actionsDigitalLayout"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
@@ -87,7 +87,7 @@
                     android:id="@+id/tvDigitalCostPrice"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Modal: Rp 20.250"
+                    android:text="- Modal: Rp 20.250"
                     android:textColor="@color/text_secondary"
                     android:textSize="11sp"
                     android:layout_marginStart="6dp" />
@@ -105,16 +105,36 @@
 
         </LinearLayout>
 
-        <ImageButton
-            android:id="@+id/btnDeleteDigital"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
-            app:tint="@color/red_cancel"
+        <LinearLayout
+            android:id="@+id/actionsDigitalLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageButton
+                android:id="@+id/btnEditDigital"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_edit"
+                app:tint="#3E24E2"
+                android:scaleType="centerInside"
+                android:contentDescription="Edit Layanan" />
+
+            <ImageButton
+                android:id="@+id/btnDeleteDigital"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close"
+                app:tint="@color/red_cancel"
+                android:scaleType="centerInside"
+                android:contentDescription="Hapus Layanan" />
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

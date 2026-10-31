@@ -15,6 +15,9 @@ interface StoreDao {
     @Query("SELECT * FROM stores WHERE id = :id LIMIT 1")
     suspend fun getStoreById(id: String): StoreEntity?
 
+    @Query("SELECT COUNT(*) FROM stores")
+    suspend fun getStoreCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStore(store: StoreEntity)
 
@@ -30,17 +33,26 @@ interface UserDao {
     @Query("SELECT * FROM users ORDER BY role ASC")
     fun getAllUsers(): Flow<List<UserEntity>>
 
+    @Query("SELECT * FROM users WHERE role = 'KASIR' ORDER BY fullName ASC")
+    fun getCashiers(): Flow<List<UserEntity>>
+
     @Query("SELECT * FROM users WHERE role = :role LIMIT 1")
     suspend fun getUserByRole(role: String): UserEntity?
 
     @Query("SELECT * FROM users WHERE username = :username LIMIT 1")
     suspend fun getUserByUsername(username: String): UserEntity?
 
+    @Query("SELECT COUNT(*) FROM users")
+    suspend fun getUserCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUsers(users: List<UserEntity>)
+
+    @Delete
+    suspend fun deleteUser(user: UserEntity)
 }
 
 @Dao
@@ -63,6 +75,9 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE name LIKE '%' || :query || '%' OR barcode LIKE '%' || :query || '%'")
     fun searchProducts(query: String): Flow<List<ProductEntity>>
 
+    @Query("SELECT COUNT(*) FROM products")
+    suspend fun getProductCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProduct(product: ProductEntity)
 
@@ -74,6 +89,12 @@ interface ProductDao {
 
     @Query("UPDATE products SET stock = stock - :quantity WHERE id = :productId")
     suspend fun reduceStock(productId: String, quantity: Double)
+
+    @Query("SELECT * FROM products ORDER BY name ASC")
+    suspend fun getAllProductsList(): List<ProductEntity>
+
+    @Query("DELETE FROM products")
+    suspend fun clearProducts()
 
     @Delete
     suspend fun deleteProduct(product: ProductEntity)
@@ -95,6 +116,30 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE syncStatus = 'PENDING'")
     suspend fun getUnsyncedTransactions(): List<TransactionEntity>
+
+    @Query("SELECT * FROM transactions ORDER BY createdAt DESC")
+    suspend fun getAllTransactionsList(): List<TransactionEntity>
+
+    @Query("SELECT * FROM transaction_items")
+    fun getAllTransactionItemsFlow(): Flow<List<TransactionItemEntity>>
+
+    @Query("SELECT * FROM transaction_items")
+    suspend fun getAllTransactionItems(): List<TransactionItemEntity>
+
+    @Query("SELECT SUM((sellingPrice - costPrice) * quantity) FROM transaction_items")
+    fun getTotalGrossProfitFlow(): Flow<Double?>
+
+    @Query("SELECT SUM(costPrice * quantity) FROM transaction_items")
+    fun getTotalHppFlow(): Flow<Double?>
+
+    @Query("SELECT SUM(subtotal) FROM transaction_items")
+    fun getTotalRevenueFlow(): Flow<Double?>
+
+    @Query("DELETE FROM transactions")
+    suspend fun clearTransactions()
+
+    @Query("DELETE FROM transaction_items")
+    suspend fun clearTransactionItems()
 }
 
 @Dao
@@ -111,11 +156,23 @@ interface CashFlowDao {
     @Query("SELECT SUM(amount) FROM cash_flows WHERE flowType = 'OUT'")
     fun getTotalCashOut(): Flow<Double?>
 
+    @Query("SELECT COUNT(*) FROM cash_flows")
+    suspend fun getCashFlowCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCashFlow(cashFlow: CashFlowEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCashFlows(cashFlows: List<CashFlowEntity>)
+
+    @Query("SELECT * FROM cash_flows ORDER BY createdAt DESC")
+    suspend fun getAllCashFlowsList(): List<CashFlowEntity>
+
+    @Query("SELECT SUM(amount) FROM cash_flows WHERE flowType = 'OUT' AND (category = 'OPERASIONAL' OR category = 'BEBAN_OPERASIONAL' OR category LIKE '%Operasional%' OR category LIKE '%Beban%')")
+    fun getTotalOperationalExpenseFlow(): Flow<Double?>
+
+    @Query("DELETE FROM cash_flows")
+    suspend fun clearCashFlows()
 
     @Delete
     suspend fun deleteCashFlow(cashFlow: CashFlowEntity)
@@ -144,6 +201,9 @@ interface DebtDao {
     @Query("SELECT SUM(totalDebt - paidAmount) FROM debts WHERE status != 'PAID'")
     fun getTotalRemainingDebts(): Flow<Double?>
 
+    @Query("SELECT COUNT(*) FROM debts")
+    suspend fun getDebtCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDebt(debt: DebtEntity)
 
@@ -152,6 +212,12 @@ interface DebtDao {
 
     @Update
     suspend fun updateDebt(debt: DebtEntity)
+
+    @Query("SELECT * FROM debts ORDER BY createdAt DESC")
+    suspend fun getAllDebtsList(): List<DebtEntity>
+
+    @Query("DELETE FROM debts")
+    suspend fun clearDebts()
 
     @Delete
     suspend fun deleteDebt(debt: DebtEntity)
@@ -164,6 +230,9 @@ interface BkuAccountDao {
 
     @Query("SELECT * FROM bku_accounts WHERE accountType = :type ORDER BY accountCode ASC, accountName ASC")
     fun getAccountsByType(type: String): Flow<List<BkuAccountEntity>>
+
+    @Query("SELECT COUNT(*) FROM bku_accounts")
+    suspend fun getAccountCount(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: BkuAccountEntity)
@@ -182,6 +251,9 @@ interface StockOpnameDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStockOpname(stockOpname: StockOpnameEntity)
+
+    @Query("DELETE FROM stock_opnames")
+    suspend fun clearStockOpnames()
 }
 
 @Dao
@@ -191,6 +263,9 @@ interface DigitalConfigDao {
 
     @Query("SELECT * FROM digital_configs WHERE id = :id LIMIT 1")
     suspend fun getConfig(id: String = "default_config"): DigitalConfigEntity?
+
+    @Query("SELECT COUNT(*) FROM digital_configs")
+    suspend fun getConfigCount(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveConfig(config: DigitalConfigEntity)
@@ -210,6 +285,9 @@ interface PurchaseOrderDao {
     @Query("SELECT * FROM purchase_orders WHERE status = :status ORDER BY createdAt DESC")
     fun getPurchasesByStatus(status: String): Flow<List<PurchaseOrderEntity>>
 
+    @Query("SELECT COUNT(*) FROM purchase_orders")
+    suspend fun getPurchaseCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPurchase(purchase: PurchaseOrderEntity)
 
@@ -218,6 +296,9 @@ interface PurchaseOrderDao {
 
     @Update
     suspend fun updatePurchase(purchase: PurchaseOrderEntity)
+
+    @Query("DELETE FROM purchase_orders")
+    suspend fun clearPurchaseOrders()
 
     @Delete
     suspend fun deletePurchase(purchase: PurchaseOrderEntity)

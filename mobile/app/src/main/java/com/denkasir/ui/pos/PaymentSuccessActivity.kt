@@ -4,10 +4,13 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.denkasir.databinding.ActivityPaymentSuccessBinding
 import com.denkasir.hardware.printer.BluetoothPrinterDriver
+import com.denkasir.hardware.printer.PrinterSettingActivity
+import com.denkasir.utils.SoundFeedbackUtils
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 
@@ -20,18 +23,42 @@ class PaymentSuccessActivity : AppCompatActivity() {
         binding = ActivityPaymentSuccessBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val invoiceNo = intent.getStringExtra("INVOICE_NO") ?: "TRX-0000"
         val receiptText = intent.getStringExtra("RECEIPT_TEXT") ?: "Struk Pembayaran DenKasir"
 
         binding.tvReceiptPreview.text = receiptText
 
+        // Pre-warm printer connection in background for instantaneous printing response
+        lifecycleScope.launch {
+            BluetoothPrinterDriver.warmupConnection(this@PaymentSuccessActivity)
+        }
+
         binding.btnPrintReceipt.setOnClickListener {
+            SoundFeedbackUtils.playBarcodeBeepAndVibrate(this@PaymentSuccessActivity)
+            binding.btnPrintReceipt.isEnabled = false
+            binding.btnPrintReceipt.text = "Sedang Mencetak..."
+            
             lifecycleScope.launch {
-                // Mock printer test or send to default paired printer
-                Toast.makeText(this@PaymentSuccessActivity, "Mengirim ke Printer Bluetooth Thermal...", Toast.LENGTH_SHORT).show()
-                val success = BluetoothPrinterDriver.printReceipt("00:11:22:33:44:55", receiptText)
-                if (!success) {
-                    Toast.makeText(this@PaymentSuccessActivity, "Printer belum terhubung, beralih ke struk WhatsApp.", Toast.LENGTH_SHORT).show()
+                try {
+                    Toast.makeText(this@PaymentSuccessActivity, "Mencetak ke printer...", Toast.LENGTH_SHORT).show()
+                    val result = BluetoothPrinterDriver.printReceipt(this@PaymentSuccessActivity, receiptText)
+                    when (result) {
+                        is BluetoothPrinterDriver.PrintResult.Success -> {
+                            Toast.makeText(this@PaymentSuccessActivity, "Struk berhasil dicetak!", Toast.LENGTH_SHORT).show()
+                        }
+                        is BluetoothPrinterDriver.PrintResult.Error -> {
+                            AlertDialog.Builder(this@PaymentSuccessActivity)
+                                .setTitle("Gagal Mencetak Struk")
+                                .setMessage(result.message + "\n\nApakah Anda ingin membuka Pengaturan Printer Bluetooth?")
+                                .setPositiveButton("Buka Pengaturan") { _, _ ->
+                                    startActivity(Intent(this@PaymentSuccessActivity, PrinterSettingActivity::class.java))
+                                }
+                                .setNegativeButton("Tutup", null)
+                                .show()
+                        }
+                    }
+                } finally {
+                    binding.btnPrintReceipt.isEnabled = true
+                    binding.btnPrintReceipt.text = "Cetak Struk Bluetooth"
                 }
             }
         }
@@ -40,7 +67,7 @@ class PaymentSuccessActivity : AppCompatActivity() {
             try {
                 val encodedMessage = URLEncoder.encode(receiptText, "UTF-8")
                 val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("https://api.whatsapp.com/send?text=$encodedMessage")
+                    data = Uri.parse("https://api.whatsapp.com/send?text=" + encodedMessage)
                 }
                 startActivity(intent)
             } catch (e: Exception) {

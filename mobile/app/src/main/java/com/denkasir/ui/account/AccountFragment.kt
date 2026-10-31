@@ -16,6 +16,7 @@ import com.denkasir.data.local.AppDatabase
 import com.denkasir.data.local.entity.DigitalConfigEntity
 import com.denkasir.data.local.entity.StoreEntity
 import com.denkasir.data.local.entity.UserEntity
+import com.denkasir.data.repository.SyncRepository
 import com.denkasir.databinding.*
 import com.denkasir.hardware.printer.PrinterSettingActivity
 import com.denkasir.utils.CurrencyUtils
@@ -25,6 +26,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class AccountFragment : Fragment() {
@@ -158,16 +162,86 @@ class AccountFragment : Fragment() {
         }
 
         binding.btnCloudSync.setOnClickListener {
-            Toast.makeText(requireContext(), "Sinkronisasi data ke Cloud FastAPI dimulai...", Toast.LENGTH_SHORT).show()
+            showCloudSyncDialog()
         }
 
         binding.btnBackupRestore.setOnClickListener {
             if (sessionManager.isOwner()) {
-                Toast.makeText(requireContext(), "Backup database lokal & Excel (.xlsx) selesai", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(requireContext(), com.denkasir.ui.backup.DataManagementActivity::class.java))
             } else {
-                Toast.makeText(requireContext(), "Hanya OWNER yang memiliki akses backup & restore!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Hanya OWNER yang memiliki akses ke Pengelolaan Data!", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun showCloudSyncDialog() {
+        val dialog = BottomSheetDialog(requireContext())
+        val dialogBinding = DialogCloudSyncBinding.inflate(layoutInflater)
+        dialog.setContentView(dialogBinding.root)
+
+        val currentUrl = sessionManager.getServerUrl()
+        val lastSync = sessionManager.getLastSyncTime()
+
+        dialogBinding.etServerUrl.setText(currentUrl)
+
+        if (lastSync > 0) {
+            val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm:ss", Locale("id", "ID"))
+            dialogBinding.tvLastSyncInfo.text = "Terakhir Sinkron: ${sdf.format(Date(lastSync))}"
+        } else {
+            dialogBinding.tvLastSyncInfo.text = "Terakhir Sinkron: Belum pernah sinkron"
+        }
+
+        dialogBinding.btnPresetLocal.setOnClickListener {
+            dialogBinding.etServerUrl.setText("http://10.0.2.2:8000/")
+        }
+
+        dialogBinding.btnPresetLan.setOnClickListener {
+            dialogBinding.etServerUrl.setText("http://192.168.1.100:8000/")
+        }
+
+        dialogBinding.btnPresetCloud.setOnClickListener {
+            dialogBinding.etServerUrl.setText("https://api.denkasir.com/")
+        }
+
+        dialogBinding.btnCancelSync.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnDoSyncNow.setOnClickListener {
+            val url = dialogBinding.etServerUrl.text.toString().trim()
+            if (url.isEmpty()) {
+                Toast.makeText(requireContext(), "URL Endpoint Server wajib diisi!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            sessionManager.saveServerUrl(url)
+            dialogBinding.progressBarSync.visibility = View.VISIBLE
+            dialogBinding.btnDoSyncNow.isEnabled = false
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                val repo = SyncRepository(requireContext())
+                val result = repo.performFullSync()
+
+                dialogBinding.progressBarSync.visibility = View.GONE
+                dialogBinding.btnDoSyncNow.isEnabled = true
+
+                if (result.isSuccess) {
+                    val body = result.getOrNull()
+                    val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm:ss", Locale("id", "ID"))
+                    val timeStr = sdf.format(Date(body?.serverTimestamp ?: System.currentTimeMillis()))
+                    dialogBinding.tvLastSyncInfo.text = "Terakhir Sinkron: $timeStr (Berhasil)"
+
+                    val counts = body?.syncedCounts?.entries?.joinToString(", ") { "${it.key}: ${it.value}" } ?: ""
+                    Toast.makeText(requireContext(), "✓ Sinkronisasi Cloud Berhasil! ($counts)", Toast.LENGTH_LONG).show()
+                    dialog.dismiss()
+                } else {
+                    val err = result.exceptionOrNull()?.localizedMessage ?: "Gagal terhubung ke server"
+                    Toast.makeText(requireContext(), "Gagal Sinkronisasi: $err", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        dialog.show()
     }
 
     private fun showLoginRoleDialog() {
@@ -178,26 +252,25 @@ class AccountFragment : Fragment() {
         var selectedRole = sessionManager.getCurrentRole()
 
         fun updateRoleSelectionUI(role: String) {
-            selectedRole = role
             if (role == SessionManager.ROLE_OWNER) {
-                dialogBinding.cardRoleOwner.setCardBackgroundColor(Color.parseColor("#EBEDFE"))
                 dialogBinding.cardRoleOwner.strokeColor = Color.parseColor("#3E24E2")
                 dialogBinding.cardRoleOwner.strokeWidth = 4
+                dialogBinding.cardRoleOwner.setCardBackgroundColor(Color.parseColor("#F5F3FF"))
                 dialogBinding.rbOwner.isChecked = true
 
-                dialogBinding.cardRoleKasir.setCardBackgroundColor(Color.WHITE)
-                dialogBinding.cardRoleKasir.strokeColor = Color.parseColor("#CBD5E1")
+                dialogBinding.cardRoleKasir.strokeColor = Color.parseColor("#E2E8F0")
                 dialogBinding.cardRoleKasir.strokeWidth = 2
+                dialogBinding.cardRoleKasir.setCardBackgroundColor(Color.WHITE)
                 dialogBinding.rbKasir.isChecked = false
             } else {
-                dialogBinding.cardRoleKasir.setCardBackgroundColor(Color.parseColor("#E0F2FE"))
                 dialogBinding.cardRoleKasir.strokeColor = Color.parseColor("#0284C7")
                 dialogBinding.cardRoleKasir.strokeWidth = 4
+                dialogBinding.cardRoleKasir.setCardBackgroundColor(Color.parseColor("#F0F9FF"))
                 dialogBinding.rbKasir.isChecked = true
 
-                dialogBinding.cardRoleOwner.setCardBackgroundColor(Color.WHITE)
-                dialogBinding.cardRoleOwner.strokeColor = Color.parseColor("#CBD5E1")
+                dialogBinding.cardRoleOwner.strokeColor = Color.parseColor("#E2E8F0")
                 dialogBinding.cardRoleOwner.strokeWidth = 2
+                dialogBinding.cardRoleOwner.setCardBackgroundColor(Color.WHITE)
                 dialogBinding.rbOwner.isChecked = false
             }
         }
@@ -205,11 +278,13 @@ class AccountFragment : Fragment() {
         updateRoleSelectionUI(selectedRole)
 
         dialogBinding.cardRoleOwner.setOnClickListener {
-            updateRoleSelectionUI(SessionManager.ROLE_OWNER)
+            selectedRole = SessionManager.ROLE_OWNER
+            updateRoleSelectionUI(selectedRole)
         }
 
         dialogBinding.cardRoleKasir.setOnClickListener {
-            updateRoleSelectionUI(SessionManager.ROLE_KASIR)
+            selectedRole = SessionManager.ROLE_KASIR
+            updateRoleSelectionUI(selectedRole)
         }
 
         dialogBinding.btnCancelLogin.setOnClickListener {
@@ -220,8 +295,7 @@ class AccountFragment : Fragment() {
             sessionManager.switchRole(selectedRole)
             setupUserRoleView()
             dialog.dismiss()
-            val roleName = if (selectedRole == SessionManager.ROLE_OWNER) "OWNER (Pemilik Toko)" else "KASIR (Staff Kasir)"
-            Toast.makeText(requireContext(), "Berhasil masuk sebagai $roleName", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Berhasil beralih mode ke $selectedRole", Toast.LENGTH_SHORT).show()
         }
 
         dialog.show()
@@ -232,12 +306,12 @@ class AccountFragment : Fragment() {
         val dialogBinding = DialogEditStoreProfileBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
-        val currentName = currentStore?.name ?: sessionManager.getStoreName()
-        val currentAddress = currentStore?.address ?: sessionManager.getStoreAddress()
-        val currentPhone = currentStore?.phone ?: sessionManager.getStorePhone()
+        val currentName = binding.tvStoreNameVal.text.toString()
+        val currentAddr = currentStore?.address ?: ""
+        val currentPhone = currentStore?.phone ?: ""
 
         dialogBinding.etStoreName.setText(currentName)
-        dialogBinding.etStoreAddress.setText(currentAddress)
+        dialogBinding.etStoreAddress.setText(currentAddr)
         dialogBinding.etStorePhone.setText(currentPhone)
 
         dialogBinding.btnCancelEditStore.setOnClickListener {
@@ -245,36 +319,31 @@ class AccountFragment : Fragment() {
         }
 
         dialogBinding.btnSaveEditStore.setOnClickListener {
-            val newName = dialogBinding.etStoreName.text.toString().trim()
-            val newAddress = dialogBinding.etStoreAddress.text.toString().trim()
-            val newPhone = dialogBinding.etStorePhone.text.toString().trim()
+            val name = dialogBinding.etStoreName.text.toString().trim()
+            val addr = dialogBinding.etStoreAddress.text.toString().trim()
+            val phone = dialogBinding.etStorePhone.text.toString().trim()
 
-            if (newName.isEmpty()) {
-                Toast.makeText(requireContext(), "Nama toko tidak boleh kosong!", Toast.LENGTH_SHORT).show()
+            if (name.isEmpty()) {
+                dialogBinding.etStoreName.error = "Nama toko wajib diisi!"
                 return@setOnClickListener
             }
 
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 val storeId = currentStore?.id ?: "default_store"
-                val updatedEntity = StoreEntity(
+                val updatedStore = StoreEntity(
                     id = storeId,
-                    name = newName,
-                    address = newAddress,
-                    phone = newPhone,
+                    name = name,
+                    address = addr,
+                    phone = phone,
                     ownerId = "owner_1",
-                    updatedAt = System.currentTimeMillis(),
-                    syncStatus = "PENDING"
+                    updatedAt = System.currentTimeMillis()
                 )
-                appDatabase.storeDao().insertStore(updatedEntity)
-                sessionManager.saveStoreInfo(newName, newAddress, newPhone)
+                appDatabase.storeDao().insertStore(updatedStore)
 
                 withContext(Dispatchers.Main) {
-                    binding.tvStoreNameVal.text = newName
-                    binding.tvStoreAddressVal.text = if (newAddress.isNotEmpty()) newAddress else "Belum diatur"
-                    binding.tvStorePhoneVal.text = if (newPhone.isNotEmpty()) newPhone else "Belum diatur"
-
+                    sessionManager.saveStoreInfo(name, addr, phone)
                     dialog.dismiss()
-                    Toast.makeText(requireContext(), "Profil toko '$newName' berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Profil Toko berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -287,20 +356,31 @@ class AccountFragment : Fragment() {
         val dialogBinding = DialogManageCashiersBinding.inflate(layoutInflater)
         dialog.setContentView(dialogBinding.root)
 
-        val cashierAdapter = CashierUserAdapter { selectedUser ->
-            Toast.makeText(requireContext(), "Staf: ${selectedUser.fullName} (@${selectedUser.username})", Toast.LENGTH_SHORT).show()
-        }
+        val cashierAdapter = CashierUserAdapter(
+            onCashierSelected = { user ->
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Hapus Kasir")
+                    .setMessage("Yakin ingin menghapus kasir '${user.fullName}' (@${user.username})?")
+                    .setPositiveButton("Hapus") { _, _ ->
+                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                            appDatabase.userDao().deleteUser(user)
+                        }
+                    }
+                    .setNegativeButton("Batal", null)
+                    .show()
+            }
+        )
 
-        dialogBinding.rvCashierUsersList.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = cashierAdapter
-        }
+        dialogBinding.rvCashierUsersList.layoutManager = LinearLayoutManager(requireContext())
+        dialogBinding.rvCashierUsersList.adapter = cashierAdapter
 
-        val cashiers = allUsers.filter { it.role == "KASIR" }
-        cashierAdapter.submitList(cashiers)
+        viewLifecycleOwner.lifecycleScope.launch {
+            appDatabase.userDao().getCashiers().collectLatest { cashiers ->
+                cashierAdapter.submitList(cashiers)
+            }
+        }
 
         dialogBinding.btnAddCashierUser.setOnClickListener {
-            dialog.dismiss()
             showAddCashierDialog()
         }
 
@@ -324,8 +404,12 @@ class AccountFragment : Fragment() {
             val fullName = dialogBinding.etCashierFullName.text.toString().trim()
             val username = dialogBinding.etCashierUsername.text.toString().trim().lowercase()
 
-            if (fullName.isEmpty() || username.isEmpty()) {
-                Toast.makeText(requireContext(), "Nama lengkap dan username wajib diisi!", Toast.LENGTH_SHORT).show()
+            if (fullName.isEmpty()) {
+                dialogBinding.etCashierFullName.error = "Nama Lengkap wajib diisi!"
+                return@setOnClickListener
+            }
+            if (username.isEmpty()) {
+                dialogBinding.etCashierUsername.error = "Username wajib diisi!"
                 return@setOnClickListener
             }
 
@@ -377,7 +461,7 @@ class AccountFragment : Fragment() {
 
             sessionManager.saveStockAlertRule(threshold, autoDraft, supplier, qty)
             dialog.dismiss()
-            Toast.makeText(requireContext(), "Aturan stok opname (Batas:  unit) berhasil disimpan!", Toast.LENGTH_LONG).show()
+            Toast.makeText(requireContext(), "Aturan stok opname (Batas: ${threshold.toInt()} unit) berhasil disimpan!", Toast.LENGTH_LONG).show()
         }
 
         dialog.show()

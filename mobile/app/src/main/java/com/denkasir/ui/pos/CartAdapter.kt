@@ -48,7 +48,6 @@ class CartAdapter(
 
             binding.tvProductUnitPrice.text = CurrencyUtils.formatRupiah(product.sellingPrice)
             
-            // If whole number, format without decimal, otherwise with decimal
             val qtyText = if (cartItem.quantity % 1.0 == 0.0) {
                 cartItem.quantity.toInt().toString()
             } else {
@@ -58,7 +57,7 @@ class CartAdapter(
 
             binding.tvSubtotalPrice.text = CurrencyUtils.formatNumberOnly(cartItem.subtotal)
 
-            ImageUtils.loadProductImage(binding.ivProductImage, product.imagePath)
+            ImageUtils.loadProductImage(binding.ivProductImage, product)
 
             binding.btnQtyMinus.setOnClickListener {
                 if (cartItem.quantity > 1) {
@@ -78,4 +77,3 @@ class CartAdapter(
         }
     }
 }
-

@@ -161,7 +161,7 @@ class BarcodeScannerActivity : AppCompatActivity() {
                 binding.tvScannedPrice.text = CurrencyUtils.formatRupiah(product.sellingPrice)
                 val stockStr = if (product.stock % 1.0 == 0.0) product.stock.toInt().toString() else product.stock.toString()
                 binding.tvScannedStock.text = "Stok: $stockStr"
-                ImageUtils.loadProductImage(binding.ivProductScanThumb, product.imagePath)
+                ImageUtils.loadProductImage(binding.ivProductScanThumb, product)
                 binding.cardProductScanned.visibility = View.VISIBLE
             } else {
                 binding.tvScannedName.text = "Produk Barcode: $barcode"
