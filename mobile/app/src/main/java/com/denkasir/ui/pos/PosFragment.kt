@@ -29,11 +29,14 @@ import com.denkasir.databinding.FragmentPosBinding
 import com.denkasir.hardware.scanner.BarcodeScannerActivity
 import com.denkasir.data.local.AppDatabase
 import com.denkasir.utils.CurrencyUtils
+import com.denkasir.utils.SmartSearchEngine
 import com.denkasir.utils.SessionManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class PosFragment : Fragment() {
@@ -44,6 +47,7 @@ class PosFragment : Fragment() {
     private val viewModel: PosViewModel by viewModels()
     private lateinit var cartAdapter: CartAdapter
     private var availableProducts: List<ProductEntity> = emptyList()
+    private lateinit var smartSearchAdapter: SmartProductSearchAdapter
 
     private var onContactPickedCallback: ((String) -> Unit)? = null
 
@@ -52,8 +56,9 @@ class PosFragment : Fragment() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val barcode = result.data?.getStringExtra("SCANNED_BARCODE")
+            val qty = result.data?.getDoubleExtra("SCANNED_QTY", 1.0) ?: 1.0
             if (!barcode.isNullOrEmpty()) {
-                viewModel.addScannedBarcode(barcode) { _, message ->
+                viewModel.addScannedBarcode(barcode, qty) { _, message ->
                     Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
                 }
             }
@@ -153,6 +158,10 @@ class PosFragment : Fragment() {
     }
 
     private fun setupSearchAndBarcode() {
+        smartSearchAdapter = SmartProductSearchAdapter(requireContext())
+        binding.etSearchProduct.threshold = 1
+        binding.etSearchProduct.setAdapter(smartSearchAdapter)
+
         binding.btnScanBarcode.setOnClickListener {
             launchBarcodeScanner()
         }
@@ -161,9 +170,8 @@ class PosFragment : Fragment() {
             launchBarcodeScanner()
         }
 
-        binding.etSearchProduct.setOnItemClickListener { parent, _, position, _ ->
-            val selectedName = parent.getItemAtPosition(position) as String
-            val product = availableProducts.find { it.name == selectedName }
+        binding.etSearchProduct.setOnItemClickListener { _, _, position, _ ->
+            val product = smartSearchAdapter.getItem(position)
             if (product != null) {
                 if (product.productType == "DIGITAL") {
                     showDigitalServicesBottomSheet(preselected = product)
@@ -172,6 +180,26 @@ class PosFragment : Fragment() {
                 }
                 binding.etSearchProduct.setText("")
             }
+        }
+
+        binding.etSearchProduct.setOnEditorActionListener { v, _, _ ->
+            val query = v.text.toString().trim()
+            if (query.isNotEmpty()) {
+                val exactBarcode = availableProducts.find { it.barcode.equals(query, ignoreCase = true) }
+                val filtered = SmartSearchEngine.filterProducts(query, availableProducts)
+                val target = exactBarcode ?: filtered.firstOrNull()
+                if (target != null) {
+                    if (target.productType == "DIGITAL") {
+                        showDigitalServicesBottomSheet(preselected = target)
+                    } else {
+                        viewModel.addToCart(target, 1.0)
+                        Toast.makeText(requireContext(), "Ditambahkan: ${target.name}", Toast.LENGTH_SHORT).show()
+                    }
+                    binding.etSearchProduct.setText("")
+                    return@setOnEditorActionListener true
+                }
+            }
+            false
         }
     }
 
@@ -219,13 +247,10 @@ class PosFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.allProducts.collectLatest { products ->
                 availableProducts = products
-                val productNames = products.map { it.name }
-                val searchAdapter = ArrayAdapter(
-                    requireContext(),
-                    android.R.layout.simple_dropdown_item_1line,
-                    productNames
-                )
-                binding.etSearchProduct.setAdapter(searchAdapter)
+                withContext(Dispatchers.Default) {
+                    SmartSearchEngine.preIndex(products)
+                }
+                smartSearchAdapter.updateProducts(products)
             }
         }
     }

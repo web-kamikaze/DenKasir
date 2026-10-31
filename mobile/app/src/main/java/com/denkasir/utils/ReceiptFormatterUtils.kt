@@ -35,6 +35,15 @@ object ReceiptFormatterUtils {
     val CMD_FEED_AND_CUT = byteArrayOf(GS, 0x56, 66, 0)
     val CMD_LINE_FEED = byteArrayOf(0x0A)
 
+    private val SHORT_UNITS = setOf(
+        "g", "gr", "gram", "kg", "mg", "ml", "l", "lt", "liter",
+        "btl", "botol", "pcs", "pc", "bh", "buah", "dus", "box",
+        "pack", "pak", "sak", "can", "tin", "cm", "m", "mm",
+        "oz", "sct", "sachet", "rcg", "renceng", "bks", "bungkus",
+        "butir", "btr", "lembar", "roll", "rol", "pasang", "psg",
+        "cup", "gelas", "kotak", "tabung", "porsi", "strip", "tablet", "kapsul"
+    )
+
     fun getColumnWidth(paperWidthMm: Int): Int {
         return if (paperWidthMm >= 80) WIDTH_80MM else WIDTH_58MM
     }
@@ -65,36 +74,112 @@ object ReceiptFormatterUtils {
                 result.add(line)
                 continue
             }
-            val words = line.split(Regex("\\s+"))
-            val current = StringBuilder()
+
+            val words = line.split(Regex("\\s+")).filter { it.isNotEmpty() }
+            if (words.isEmpty()) {
+                result.add("")
+                continue
+            }
+
+            val rawLines = mutableListOf<MutableList<String>>()
+            var currentLine = mutableListOf<String>()
+            var currentLen = 0
+
             for (word in words) {
                 if (word.length > width) {
-                    if (current.isNotEmpty()) {
-                        result.add(current.toString())
-                        current.clear()
+                    if (currentLine.isNotEmpty()) {
+                        rawLines.add(currentLine)
+                        currentLine = mutableListOf()
+                        currentLen = 0
                     }
                     var remaining = word
                     while (remaining.length > width) {
-                        result.add(remaining.substring(0, width))
+                        rawLines.add(mutableListOf(remaining.substring(0, width)))
                         remaining = remaining.substring(width)
                     }
                     if (remaining.isNotEmpty()) {
-                        current.append(remaining)
+                        currentLine.add(remaining)
+                        currentLen = remaining.length
                     }
-                } else if (current.length + word.length + (if (current.isEmpty()) 0 else 1) <= width) {
-                    if (current.isNotEmpty()) current.append(" ")
-                    current.append(word)
                 } else {
-                    result.add(current.toString())
-                    current.clear()
-                    current.append(word)
+                    val addedLen = if (currentLen == 0) word.length else currentLen + 1 + word.length
+                    if (addedLen <= width) {
+                        currentLine.add(word)
+                        currentLen = addedLen
+                    } else {
+                        if (currentLine.isNotEmpty()) {
+                            rawLines.add(currentLine)
+                        }
+                        currentLine = mutableListOf(word)
+                        currentLen = word.length
+                    }
                 }
             }
-            if (current.isNotEmpty()) {
-                result.add(current.toString())
+            if (currentLine.isNotEmpty()) {
+                rawLines.add(currentLine)
+            }
+
+            // Lookahead orphan unit & short word balance pass
+            for (i in 0 until rawLines.size - 1) {
+                val prevWords = rawLines[i]
+                val nextWords = rawLines[i + 1]
+
+                if (prevWords.size > 1 && nextWords.size == 1) {
+                    val orphanWord = nextWords[0]
+                    val cleanOrphan = orphanWord.lowercase(Locale.ROOT).trimEnd('.', '!', '?', ',')
+                    val isShortOrUnit = orphanWord.length <= 4 ||
+                            SHORT_UNITS.contains(cleanOrphan) ||
+                            (orphanWord.length <= 7 && (orphanWord.endsWith("!") || orphanWord.endsWith("?")))
+
+                    val shouldBalance = isShortOrUnit || (orphanWord.length <= 8 && prevWords.size >= 3)
+                    if (shouldBalance) {
+                        val wordToMove = prevWords.last()
+                        val newNextLen = wordToMove.length + 1 + orphanWord.length
+                        if (newNextLen <= width) {
+                            prevWords.removeAt(prevWords.size - 1)
+                            nextWords.add(0, wordToMove)
+                        }
+                    }
+                }
+            }
+
+            for (wordsInLine in rawLines) {
+                result.add(wordsInLine.joinToString(" "))
             }
         }
         return result
+    }
+
+    /**
+     * Formats label and value with a vertically aligned colon (:).
+     */
+    fun keyColonValue(
+        label: String,
+        value: String,
+        width: Int,
+        labelWidth: Int = if (width >= WIDTH_80MM) 14 else 11
+    ): String {
+        val cleanLabel = label.trim()
+        val paddedLabel = cleanLabel.padEnd(labelWidth)
+        val prefix = "$paddedLabel: "
+        val prefixLen = prefix.length
+        val valueWidth = width - prefixLen
+
+        if (valueWidth <= 4) {
+            return "$cleanLabel: $value"
+        }
+
+        val wrappedValue = wrapText(value.trim(), valueWidth)
+        if (wrappedValue.isEmpty()) {
+            return prefix
+        }
+
+        val sb = StringBuilder()
+        sb.append(prefix).append(wrappedValue[0])
+        for (i in 1 until wrappedValue.size) {
+            sb.append("\n").append(" ".repeat(prefixLen)).append(wrappedValue[i])
+        }
+        return sb.toString()
     }
 
     fun centerText(text: String, width: Int): String {
@@ -198,13 +283,14 @@ object ReceiptFormatterUtils {
         }
         sb.append(doubleDivider(width)).append("\n")
 
-        // 2. Meta Data Transaksi
-        sb.append(twoColumns("No. Nota", transaction.invoiceNumber, width)).append("\n")
-        sb.append(twoColumns("Waktu", dateFormat.format(Date(transaction.createdAt)), width)).append("\n")
-        sb.append(twoColumns("Kasir", transaction.cashierName ?: "Kasir", width)).append("\n")
-        sb.append(twoColumns("Pembayaran", transaction.paymentMethod, width)).append("\n")
+        val lw = if (width >= WIDTH_80MM) 14 else 11
+        // 2. Meta Data Transaksi dengan Titik Dua Terjajar Rapi
+        sb.append(keyColonValue("No. Nota", transaction.invoiceNumber, width, lw)).append("\n")
+        sb.append(keyColonValue("Tanggal", dateFormat.format(Date(transaction.createdAt)), width, lw)).append("\n")
+        sb.append(keyColonValue("Kasir", transaction.cashierName ?: "Kasir", width, lw)).append("\n")
+        sb.append(keyColonValue("Bayar", transaction.paymentMethod, width, lw)).append("\n")
         if (!transaction.customerName.isNullOrBlank() && transaction.customerName != "Pelanggan Warung") {
-            sb.append(twoColumns("Pelanggan", transaction.customerName, width)).append("\n")
+            sb.append(keyColonValue("Pelanggan", transaction.customerName, width, lw)).append("\n")
         }
         sb.append(divider(width)).append("\n")
 
@@ -261,12 +347,16 @@ object ReceiptFormatterUtils {
             }
         }
 
-        // 5. Footer Struk
+        // 5. Footer Struk Bersih Tanpa Orphan Words
         sb.append(doubleDivider(width)).append("\n")
-        val footerLines = footerNote.lines()
-        for (fLine in footerLines) {
-            if (fLine.isNotBlank()) {
-                sb.append(centerText(fLine, width)).append("\n")
+        val rawFooterLines = footerNote.lines()
+        for (rawLine in rawFooterLines) {
+            val trimmed = rawLine.trim()
+            if (trimmed.isNotBlank()) {
+                val wrappedLines = wrapText(trimmed, width)
+                for (wLine in wrappedLines) {
+                    sb.append(centerText(wLine, width)).append("\n")
+                }
             }
         }
         if (showQr) {
@@ -324,14 +414,15 @@ object ReceiptFormatterUtils {
         }
         baos.write((doubleDivider(width) + "\n").toByteArray(charset))
 
-        // 3. Meta Data Transaksi
+        val lw = if (width >= WIDTH_80MM) 14 else 11
+        // 3. Meta Data Transaksi dengan Kolom Aligned
         baos.write(CMD_ALIGN_LEFT)
-        baos.write((twoColumns("No. Nota", transaction.invoiceNumber, width) + "\n").toByteArray(charset))
-        baos.write((twoColumns("Waktu", dateFormat.format(Date(transaction.createdAt)), width) + "\n").toByteArray(charset))
-        baos.write((twoColumns("Kasir", transaction.cashierName ?: "Kasir", width) + "\n").toByteArray(charset))
-        baos.write((twoColumns("Pembayaran", transaction.paymentMethod, width) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("No. Nota", transaction.invoiceNumber, width, lw) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Tanggal", dateFormat.format(Date(transaction.createdAt)), width, lw) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Kasir", transaction.cashierName ?: "Kasir", width, lw) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Bayar", transaction.paymentMethod, width, lw) + "\n").toByteArray(charset))
         if (!transaction.customerName.isNullOrBlank() && transaction.customerName != "Pelanggan Warung") {
-            baos.write((twoColumns("Pelanggan", transaction.customerName, width) + "\n").toByteArray(charset))
+            baos.write((keyColonValue("Pelanggan", transaction.customerName, width, lw) + "\n").toByteArray(charset))
         }
         baos.write((divider(width) + "\n").toByteArray(charset))
 
@@ -390,13 +481,17 @@ object ReceiptFormatterUtils {
             }
         }
 
-        // 6. Footer Struk
+        // 6. Footer Struk (Rapi tanpa orphan wrap)
         baos.write((doubleDivider(width) + "\n").toByteArray(charset))
         baos.write(CMD_ALIGN_CENTER)
-        val footerLines = footerNote.lines()
-        for (fLine in footerLines) {
-            if (fLine.isNotBlank()) {
-                baos.write((fLine + "\n").toByteArray(charset))
+        val rawFooterLines = footerNote.lines()
+        for (rawLine in rawFooterLines) {
+            val trimmed = rawLine.trim()
+            if (trimmed.isNotBlank()) {
+                val wrappedLines = wrapText(trimmed, width)
+                for (wLine in wrappedLines) {
+                    baos.write((wLine + "\n").toByteArray(charset))
+                }
             }
         }
 
@@ -462,11 +557,12 @@ object ReceiptFormatterUtils {
         sb.append(centerText(storeAddress, width)).append("\n")
         sb.append(doubleDivider(width)).append("\n")
 
+        val lw = if (width >= WIDTH_80MM) 14 else 11
         sb.append(centerText("TES CETAK PRINTER THERMAL", width)).append("\n")
-        sb.append(twoColumns("Waktu Tes", dateFormat.format(Date()), width)).append("\n")
-        sb.append(twoColumns("Status Printer", "TERHUBUNG OK", width)).append("\n")
-        sb.append(twoColumns("Ukuran Kertas", paperWidthMm.toString() + " mm (" + width.toString() + " Kolom)", width)).append("\n")
-        sb.append(twoColumns("Format Layout", if (layoutStyle == SessionManager.LAYOUT_3_COLUMN) "3 Kolom Tabular" else "2 Kolom Standar", width)).append("\n")
+        sb.append(keyColonValue("Waktu Tes", dateFormat.format(Date()), width, lw)).append("\n")
+        sb.append(keyColonValue("Status", "TERHUBUNG OK", width, lw)).append("\n")
+        sb.append(keyColonValue("Ukuran", "${paperWidthMm}mm (${width} Kolom)", width, lw)).append("\n")
+        sb.append(keyColonValue("Format", if (layoutStyle == SessionManager.LAYOUT_3_COLUMN) "3 Kolom Tabular" else "2 Kolom Standar", width, lw)).append("\n")
         sb.append(divider(width)).append("\n")
 
         if (layoutStyle == SessionManager.LAYOUT_3_COLUMN) {
@@ -540,14 +636,15 @@ object ReceiptFormatterUtils {
         baos.write((doubleDivider(width) + "\n").toByteArray(charset))
 
         // Info Test
+        val lw = if (width >= WIDTH_80MM) 14 else 11
         baos.write(CMD_ALIGN_LEFT)
         baos.write(CMD_BOLD_ON)
         baos.write((centerText("TES CETAK PRINTER THERMAL", width) + "\n").toByteArray(charset))
         baos.write(CMD_BOLD_OFF)
-        baos.write((twoColumns("Waktu Tes", dateFormat.format(Date()), width) + "\n").toByteArray(charset))
-        baos.write((twoColumns("Status Printer", "TERHUBUNG OK", width) + "\n").toByteArray(charset))
-        baos.write((twoColumns("Ukuran Kertas", paperWidthMm.toString() + " mm (" + width.toString() + " Kolom)", width) + "\n").toByteArray(charset))
-        baos.write((twoColumns("Format Layout", if (layoutStyle == SessionManager.LAYOUT_3_COLUMN) "3 Kolom Tabular" else "2 Kolom Standar", width) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Waktu Tes", dateFormat.format(Date()), width, lw) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Status", "TERHUBUNG OK", width, lw) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Ukuran", "${paperWidthMm}mm (${width} Kolom)", width, lw) + "\n").toByteArray(charset))
+        baos.write((keyColonValue("Format", if (layoutStyle == SessionManager.LAYOUT_3_COLUMN) "3 Kolom Tabular" else "2 Kolom Standar", width, lw) + "\n").toByteArray(charset))
         baos.write((divider(width) + "\n").toByteArray(charset))
 
         if (layoutStyle == SessionManager.LAYOUT_3_COLUMN) {

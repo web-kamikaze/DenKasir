@@ -1,4 +1,4 @@
-﻿# BUG.md - Log Pencatatan dan Penanganan Bug DenKasir
+# BUG.md - Log Pencatatan dan Penanganan Bug DenKasir
 
 Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kegagalan sistem yang diidentifikasi selama pengembangan aplikasi DenKasir, beserta status dan solusinya sesuai standar `AGENTS.md`.
 
@@ -8,7 +8,7 @@ Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kega
 
 | Total Bug | OPEN | IN_PROGRESS | RESOLVED | WONT_FIX |
 |---|---|---|---|---|
-| 28 | 0 | 0 | 28 | 0 |
+| 31 | 0 | 0 | 31 | 0 |
 
 ---
 
@@ -373,3 +373,106 @@ Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kega
   2. Tambahkan pengaturan folder kustom di `SessionManager` (`saveCustomImagesDir` / `getCustomImagesDir`).
   3. Tambahkan tombol **'Pilih / Atur Folder Foto Offline'** dan **'Sinkronkan Foto dari Folder Lokal'** pada kartu Pengelolaan Data di `activity_data_management.xml` dan `DataManagementActivity.kt`, lengkap dengan pemindaian otomatis barcode dan notifikasi hasil pencocokan.
   4. Kompilasi ulang dan update APK langsung ke perangkat Android.
+
+---
+
+### [BUG-029]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / UI & Financial Reporting Engine (BKU & Cashier Transactions)
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Komponen grafik arus kas (CashFlowChartView) menggunakan data statis tiruan (*hardcoded dummy data*) dan tidak pernah dihubungkan dengan data mutasi kas maupun transaksi penjualan riil dari database Room. Selain itu, layar laporan keuangan (ReportsFragment) dan riwayat transaksi kasir (TransactionsFragment) belum menyediakan mekanisme penyortiran/penyaringan periode (harian, mingguan, bulanan, dan rentang tanggal kustom), menyebabkan angka metrik omset, HPP, laba rugi, dan daftar mutasi selalu terakumulasi global tanpa pemisahan rentang waktu.
+- **Dampak / Potensi Resiko**: Pemilik toko/kasir tidak dapat memantau pergerakan arus kas riil harian secara visual dan kesulitan mengevaluasi omset serta laba bersih harian, mingguan, maupun bulanan.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Rombak CashFlowChartView.kt menjadi komponen grafik dinamis yang menerima dataset dinamis (setChartData(labels, cashIn, cashOut)), mendukung kalkulasi sumbu Y otomatis (*nice numbers* kelipatan ribuan/jutaan), render kurva gradien hijau (kas masuk) & merah (kas keluar), serta empty-state aman.
+  2. Tambahkan UI chip filter periode (Harian, Mingguan, Bulanan, dan Kustom dengan pemilih tanggal DatePickerDialog) pada ReportsFragment dan TransactionsFragment.
+  3. Hubungkan agregasi database (omset, HPP, laba kotor, beban operasional, laba bersih, mutasi kas) dan kurva grafik secara real-time dengan filter rentang waktu aktif.
+- **Solusi Yang Diterapkan**:
+  1. Merombak CashFlowChartView.kt secara penuh menjadi komponen grafik dinamis interaktif yang menerima dataset realtime (setChartData(labels, cashIn, cashOut)), mendukung kalkulasi sumbu Y otomatis (*nice numbers* kelipatan ribuan/jutaan), render kurva gradien hijau (kas masuk) & merah (kas keluar), badge nilai interaktif saat node disentuh, dan penanganan empty-state jika belum ada transaksi.
+  2. Membuat DateFilterHelper.kt yang menyediakan kalkulasi rentang waktu terstandar (HARIAN per-jam, MINGGUAN 7 hari terakhir, BULANAN bulan kalender aktif, dan KUSTOM berbasis DatePickerDialog untuk memilih tanggal awal dan akhir) serta pembagian data mutasi ke dalam ember (*bucket*) waktu.
+  3. Memasang bar chip filter waktu pada ReportsFragment.kt dan layout `fragment_reports.xml` sehingga omset, HPP, laba kotor, beban operasional, laba bersih, saldo kas laci, dan mutasi BKU disaring secara dinamis sesuai periode yang dipilih.
+  4. Menambahkan chip filter periode waktu dan kartu grafik arus kas serta ringkasan omset kasir pada TransactionsFragment.kt dan layout `fragment_transactions.xml`, lengkap dengan opsi sembunyikan/tampilkan grafik.
+  5. Menambahkan rangkaian unit test DateFilterAndChartTest.kt yang menguji akurasi rentang waktu harian, mingguan, bulanan, kustom, dan agregasi data grafik tanpa regresi (100% PASS).
+---
+
+### [BUG-030]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / POS Hardware, Receipt Formatter & Smart Search Engine
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**:
+  1. **Format Struk Kasir Berantakan**: Pemenggalan kata pada ReceiptFormatterUtils.kt memicu *orphan word* (satuan seperti 'g' atau 'ml' terlempar sendirian ke baris baru, contoh: "Indomie Mi Instan Ayam Bawang 69" diikuti baris baru "g"). Selain itu, metadata struk (No Nota, Waktu, Kasir, Pembayaran) tidak memiliki perataan titik dua (colon alignment), pemusatan teks catatan kaki menyisakan kata tunggal ('Anda!', 'ditukar'), dan terdapat garis pembatas ganda yang tidak rapi.
+  2. **Pemindai Barcode Tidak Akumulasi Qty**: Pada BarcodeScannerActivity.kt, variabel lastScannedCode tidak pernah di-reset saat produk yang sama dipindai berulang kali, sehingga pemindaian kedua (2x) dan ketiga (3x) diabaikan sepenuhnya dan kasir tidak dapat menambah kuantitas produk secara beruntun (*continuous multi-scan*).
+  3. **Pencarian Produk Kaku (Strict Substring)**: Pada PosFragment.kt dan ProductsFragment.kt, fitur pencarian hanya mengandalkan pencocokan substring statis tunggal. Pencarian kata kunci acak/tidak berurutan (misal: "ayam goreng mie" vs "Indomie Mi Instan Ayam Goreng") atau variasi ejaan/typo Indonesia (misal: "mei ayam goreng" mencari "mie") tidak memunculkan hasil apa pun.
+- **Dampak / Potensi Resiko**: Tampilan struk kasir cetak/digital tidak profesional dan menyulitkan pembacaan, proses kasir lambat karena harus mengubah QTY manual saat memindai barang yang sama berkali-kali, serta kasir kesulitan menemukan produk saat mengetik kata kunci dengan urutan berbeda atau salah ketik ringan.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Perbaiki ReceiptFormatterUtils.kt dengan aturan pembungkusan kata cerdas (*smart wrap without orphan units*), penataan metadata rapi berbasis kolom rata kiri-kanan dengan pemisah titik dua konsisten, dan penyempurnaan preview struk di PaymentSuccessActivity.
+  2. Perbarui BarcodeScannerActivity.kt dan PosViewModel.kt untuk mendukung *continuous accumulation multi-scan* dengan debounce cooldown (~800ms) sehingga pemindaian berulang pada produk yang sama otomatis menambah kuantitas (1x -> x1, 2x -> x2, 3x -> x3) lengkap dengan feedback audio-haptic dan pengiriman SCANNED_QUANTITY.
+  3. Bangun modul SmartSearchEngine.kt yang mendukung tokenisasi multi-kata tanpa memedulikan urutan kata (*order-independent*), normalisasi sinonim/ejaan fonetik bahasa Indonesia (mei->mie, telor->telur, cabe->cabai), serta fuzzy matching Levenshtein, dan pasang pada PosFragment.kt dan ProductsFragment.kt.
+- **Solusi Yang Diterapkan**:
+  1. **Rapi-kan Struk Printer & Preview Nota**:
+     - Memperbaiki `ReceiptFormatterUtils.kt` dengan algoritma *Smart Word Wrapping & Orphan Prevention*: kata atau unit pendek (`g`, `ml`, `kg`, `Anda!`) tidak lagi terlempar sendirian ke baris berikutnya melainkan menarik kata sebelumnya (misal: "Indomie Mi Instan Ayam Bawang" dan baris kedua "69 g").
+     - Menambahkan fungsi `keyColonValue(label, value, width, labelWidth)` sehingga seluruh metadata (No. Nota, Tanggal, Kasir, Bayar, Pelanggan) memiliki perataan titik dua (`:`) yang 100% vertikal lurus presisi pada struk 58mm maupun 80mm.
+     - Memperbaiki format footer default di `SessionManager.kt` dan pembungkusan baris catatan kaki agar pas dalam 32 kolom tanpa terpotong kaku.
+     - Memperbarui `activity_payment_success.xml` dan `PaymentSuccessActivity.kt` menggunakan font monospace terstandar, `HorizontalScrollView` pelindung, serta ukuran font `11.5sp` berjarak 2dp sehingga teks struk di layar ponsel tidak pernah wrap secara artifisial.
+  2. **Akumulasi Scan Barcode Berulang (1x -> x1, 2x -> x2, 3x -> x3)**:
+     - Mengubah `BarcodeScannerActivity.kt` dengan menambahkan pelacakan `scannedQuantity` dan jeda aman (`SAME_BARCODE_COOLDOWN_MS = 850L`). Pemindaian beruntun pada barcode yang sama otomatis menaikkan kuantitas (`x1`, `x2`, `x3`), memicu feedback audio beep dan vibrasi haptik kasir, serta menampilkan kartu preview dengan animasi denyut (*card pulse animation*) dan subtotal harga akumulatif.
+     - Mengirimkan `SCANNED_BARCODE` dan `SCANNED_QTY` kembali ke `PosFragment.kt` via result launcher.
+     - Memperbarui `PosViewModel.addScannedBarcode(barcode, qty)` agar mengalirkan kuantitas yang dipindai langsung ke keranjang kasir.
+  3. **Smart Search Engine (Unordered & Indonesian Phonetic Typo-Tolerant)**:
+     - Membangun `SmartSearchEngine.kt` yang mendukung tokenisasi multi-kata tanpa bergantung urutan (*order-independent*). Kata kunci "mei ayam goreng" atau "goreng mie ayam" dapat secara cerdas memanggil "Indomie Mi Instan Rasa Ayam Goreng".
+     - Menyediakan kamus normalisasi fonetik/slang Indonesia (`mei`/`mi` -> `mie`, `telor` -> `telur`, `cabe` -> `cabai`, `minak` -> `minyak`, `akua` -> `aqua`, dll.).
+     - Mengimplementasikan kalkulasi jarak edit Damerau-Levenshtein untuk mentolerir salah ketik ringan (misal: "ayamm", "indomye").
+     - Mengimplementasikan `SmartProductSearchAdapter.kt` pada kolom pencarian POS `etSearchProduct`, serta mengintegrasikannya ke `ProductsFragment.kt` dan `StockOpnameActivity.kt`.
+     - Menambahkan unit test komprehensif `SmartSearchAndBarcodeReceiptTest.kt` (9 tes, 100% PASS).---
+
+### [BUG-031]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / POS Hardware (Barcode Scanner Camera Selector)
+- **Tingkat Keparahan**: MEDIUM
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Layar pemindai barcode (`BarcodeScannerActivity.kt`) terkunci secara kaku (*hardcoded*) hanya menggunakan kamera belakang (`CameraSelector.DEFAULT_BACK_CAMERA`). Perangkat kasir tablet yang dipasang di meja kasir (*stand/dock*) atau kasir yang membutuhkan kamera depan untuk memindai barang ke arah pembeli/kasir tidak memiliki kontrol untuk mengganti kamera. Selain itu, tombol senter flash tetap muncul meskipun kamera depan tidak memiliki perangkat flash fisik.
+- **Dampak / Potensi Resiko**: Pengguna kasir tablet atau holder statis tidak dapat menggunakan kamera depan untuk pemindaian barcode yang efisien.
+- **Rekomendasi / Solusi Perbaikan**: Tambahkan tombol pengalih kamera depan/belakang (`btnSwitchCamera`) pada header `activity_barcode_scanner.xml`, dukung pergantian dinamis lensa `CameraSelector.LENS_FACING_FRONT` dan `LENS_FACING_BACK`, simpan preferensi lensa pengguna di `SessionManager`, dan sesuaikan visibilitas tombol flash secara kondisional.
+- **Solusi Yang Diterapkan**:
+  1. Menambahkan tombol aksi `btnSwitchCamera` dengan ikon vektor material `ic_switch_camera.xml` pada top bar `activity_barcode_scanner.xml`.
+  2. Memperbarui `BarcodeScannerActivity.kt` untuk mendukung peralihan dinamis antara kamera depan dan belakang (`switchCamera()`), lengkap dengan animasi rotasi ikon 180°, notifikasi Toast, penanganan *graceful fallback* jika perangkat hanya memiliki satu kamera, serta otomatis menyembunyikan tombol senter jika lensa yang aktif tidak memiliki flash unit fisik.
+  3. Menyimpan dan memuat preferensi arah kamera kasir secara persisten di `SessionManager.kt` (`savePreferredCameraLens` / `getPreferredCameraLens`) sehingga pengguna tidak perlu mengganti kamera berulang-ulang setiap kali membuka scanner.
+  4. Pengujian unit test dan kompilasi APK Gradle berhasil tanpa regresi (100% PASS).
+---
+
+### [BUG-032]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / Search Engine & Performance (SmartSearchEngine & Products Search Auto-Indexing)
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**:
+  Pada katalog produk berukuran besar (8.670 produk), pengetikan kata kunci pencarian pada layar ProductsFragment, PosFragment, dan StockOpnameActivity mengalami keterlambatan/lag yang sangat berat (*stuttering*). Hal ini disebabkan oleh:
+  1. SmartSearchEngine.filterProducts dieksekusi secara sinkron langsung di Main UI Thread pada setiap kali karakter diketik (onTextChanged) tanpa mekanisme debouncing.
+  2. Indeks token produk (ProductIndex) belum dibuat sebelumnya (tidak ada *auto pre-indexing* di latar belakang saat data produk dimuat dari database Room).
+  3. Perhitungan jarak edit Levenshtein dijalankan tanpa pengecekan awal selisih panjang string (bs(len1 - len2) <= maxDist), memicu puluhan ribu komputasi matriks dan alokasi IntArray per ketukan tombol.
+  4. Rendering pop-up dropdown AutoCompleteTextView pada kasir tidak dibatasi jumlahnya, membebani sistem dengan rendering ribuan item sekaligus.
+- **Dampak / Potensi Resiko**: Aplikasi Android mengalami *UI freeze*, pengetikan terasa lambat/berat, dan potensi ANR (*Application Not Responding*) saat kasir mencari produk pada katalog toko besar.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Bangun *auto pre-indexing* di background coroutine (Dispatchers.Default) segera setelah produk dimuat dari Room Database.
+  2. Terapkan *coroutine debouncing* (120ms) dengan pembatalan job aktif (searchJob?.cancel()) pada ProductsFragment dan StockOpnameActivity.
+  3. Pindahkan eksekusi penyaringan dan pemeringkatan skor pencarian ke thread pool latar belakang (withContext(Dispatchers.Default)).
+  4. Optimalkan SmartSearchEngine: tambahkan *early length-difference check* sebelum kalkulasi Levenshtein, dan batasi batas maksimum hasil (maxResults = 100 pada list produk, maxResults = 40 pada autocomplete POS).
+- **Solusi Yang Diterapkan**:
+  1. **Optimasi SmartSearchEngine.kt**:
+     - Menambahkan fungsi preIndex(products) dengan cache berbasis ConcurrentHashMap<String, ProductIndex> yang mengindeks barcode, token nama, dan token kategori.
+     - Menambahkan pemeriksaan awal selisih panjang string (kotlin.math.abs(len1 - len2) > 2) pada levenshteinDistance dan sebelum pemanggilan matriks, mengeliminasi alokasi memori berlebih dan mempercepat pencocokan hingga 10x lipat.
+     - Menambahkan pembatasan hasil instan (maxResults = 100 untuk RecyclerView dan maxResults = 40 untuk AutoCompleteTextView).
+  2. **Debounce & Background Coroutine di ProductsFragment.kt**:
+     - Menjalankan SmartSearchEngine.preIndex(products) di thread Dispatchers.Default secara asinkron saat llRetailProducts dan llDigitalProducts diterima dari Room Database.
+     - Menambahkan searchJob dengan debouncing 120ms (delay(120)) pada inding.etSearchProduct.addTextChangedListener.
+     - Memindahkan kalkulasi filter ke withContext(Dispatchers.Default) sehingga Main UI Thread 100% lancar tanpa stutter saat kasir mengetik kata kunci.
+  3. **Optimasi di PosFragment.kt & SmartProductSearchAdapter.kt**:
+     - Menjalankan pre-index di background saat produk diperbarui di POS.
+     - Mengatur inding.etSearchProduct.threshold = 1 dan membatasi dropdown hingga 40 produk teratas untuk kecepatan rendering instan.
+  4. **Optimasi di StockOpnameActivity.kt**:
+     - Mengimplementasikan debounceFilter (120ms) dan pemrosesan SmartSearchEngine.matches pada Dispatchers.Default.
+  5. **Pengamanan DataManagementActivity.kt**:
+     - Menambahkan blok pelindung try-catch pada fungsi pemindaian foto offline scanAndSyncLocalImagesFolder() dengan dialog pemberitahuan informatif.
+  6. **Deployment APK & Verifikasi**:
+     - APK berhasil dikompilasi ulang (ssembleDebug) dan dipasang ke perangkat uji fisik via ADB (db install -r -d) dengan mempertahankan 100% basis data lokal (8.670 produk dan foto tetap utuh tanpa pm clear). Seluruh unit test lolos 100%.

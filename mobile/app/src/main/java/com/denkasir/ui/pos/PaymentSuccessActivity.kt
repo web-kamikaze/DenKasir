@@ -25,6 +25,7 @@ class PaymentSuccessActivity : AppCompatActivity() {
 
         val receiptText = intent.getStringExtra("RECEIPT_TEXT") ?: "Struk Pembayaran DenKasir"
 
+        binding.tvReceiptPreview.typeface = android.graphics.Typeface.MONOSPACE
         binding.tvReceiptPreview.text = receiptText
 
         // Pre-warm printer connection in background for instantaneous printing response

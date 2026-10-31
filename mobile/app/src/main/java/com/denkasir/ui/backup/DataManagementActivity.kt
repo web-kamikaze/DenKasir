@@ -1,6 +1,9 @@
 package com.denkasir.ui.backup
 
 import android.app.ProgressDialog
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -29,6 +32,23 @@ class DataManagementActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDataManagementBinding
     private lateinit var appDatabase: AppDatabase
 
+    private var pendingStorageAction: (() -> Unit)? = null
+
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val readGranted = permissions[Manifest.permission.READ_EXTERNAL_STORAGE] ?: false
+        val writeGranted = permissions[Manifest.permission.WRITE_EXTERNAL_STORAGE] ?: false
+        if (readGranted || writeGranted || ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            val action = pendingStorageAction
+            pendingStorageAction = null
+            action?.invoke()
+        } else {
+            pendingStorageAction = null
+            Toast.makeText(this, "Izin penyimpanan dibutuhkan untuk membaca foto produk offline", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private val selectFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
@@ -45,7 +65,7 @@ class DataManagementActivity : AppCompatActivity() {
                 Toast.makeText(this, "Folder foto offline diatur ke: $resolvedPath", Toast.LENGTH_LONG).show()
                 loadDataSummaries()
             } catch (e: Exception) {
-                val fallbackPath = "/sdcard/Download/image"
+                val fallbackPath = "/sdcard/image"
                 SessionManager.getInstance(this).saveCustomImagesDir(fallbackPath)
                 Toast.makeText(this, "Menggunakan folder: $fallbackPath", Toast.LENGTH_SHORT).show()
                 loadDataSummaries()
@@ -90,7 +110,7 @@ class DataManagementActivity : AppCompatActivity() {
             if (!Environment.isExternalStorageManager()) {
                 AlertDialog.Builder(this)
                     .setTitle("Izin Akses Berkas Diperlukan")
-                    .setMessage("Untuk membaca foto produk offline di folder /sdcard/Download/image/ atau folder kustom, DenKasir memerlukan izin 'Akses Semua File'.\n\nSilakan aktifkan toggle izin pada layar pengaturan.")
+                    .setMessage("Untuk membaca foto produk offline di folder /sdcard/image/ atau folder kustom, DenKasir memerlukan izin 'Akses Semua File'.\n\nSilakan aktifkan toggle izin pada layar pengaturan.")
                     .setPositiveButton("Buka Pengaturan") { _, _ ->
                         try {
                             val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
@@ -103,6 +123,18 @@ class DataManagementActivity : AppCompatActivity() {
                     }
                     .setNegativeButton("Batal", null)
                     .show()
+                return
+            }
+        } else {
+            val readPerm = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+            if (readPerm != PackageManager.PERMISSION_GRANTED) {
+                pendingStorageAction = onGranted
+                storagePermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                )
                 return
             }
         }
@@ -507,7 +539,8 @@ class DataManagementActivity : AppCompatActivity() {
     }
     private fun showSelectImageFolderDialog() {
         val options = arrayOf(
-            "Gunakan Folder Standar (/sdcard/Download/image/)",
+            "Gunakan Folder Standar (/sdcard/image/)",
+            "Gunakan Folder (/sdcard/Download/image/)",
             "Gunakan Folder (/sdcard/product_images/)",
             "Pilih Folder Lewat Pemilih Berkas HP (SAF)",
             "Ketik Lokasi Folder Manual",
@@ -518,26 +551,31 @@ class DataManagementActivity : AppCompatActivity() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> {
+                        SessionManager.getInstance(this).saveCustomImagesDir("/sdcard/image")
+                        Toast.makeText(this, "Folder diatur ke: /sdcard/image", Toast.LENGTH_SHORT).show()
+                        loadDataSummaries()
+                    }
+                    1 -> {
                         SessionManager.getInstance(this).saveCustomImagesDir("/sdcard/Download/image")
                         Toast.makeText(this, "Folder diatur ke: /sdcard/Download/image", Toast.LENGTH_SHORT).show()
                         loadDataSummaries()
                     }
-                    1 -> {
+                    2 -> {
                         SessionManager.getInstance(this).saveCustomImagesDir("/sdcard/product_images")
                         Toast.makeText(this, "Folder diatur ke: /sdcard/product_images", Toast.LENGTH_SHORT).show()
                         loadDataSummaries()
                     }
-                    2 -> {
+                    3 -> {
                         try {
                             selectFolderLauncher.launch(null)
                         } catch (e: Exception) {
                             showManualFolderInputDialog()
                         }
                     }
-                    3 -> {
+                    4 -> {
                         showManualFolderInputDialog()
                     }
-                    4 -> {
+                    5 -> {
                         SessionManager.getInstance(this).saveCustomImagesDir(null)
                         Toast.makeText(this, "Folder foto di-reset ke deteksi otomatis", Toast.LENGTH_SHORT).show()
                         loadDataSummaries()
@@ -550,8 +588,8 @@ class DataManagementActivity : AppCompatActivity() {
 
     private fun showManualFolderInputDialog() {
         val input = EditText(this).apply {
-            hint = "/sdcard/Download/image"
-            setText(SessionManager.getInstance(this@DataManagementActivity).getCustomImagesDir() ?: "/sdcard/Download/image")
+            hint = "/sdcard/image"
+            setText(SessionManager.getInstance(this@DataManagementActivity).getCustomImagesDir() ?: "/sdcard/image")
             setPadding(40, 30, 40, 30)
         }
 
@@ -579,18 +617,27 @@ class DataManagementActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            val (matched, total) = ImageUtils.syncImagesFromFolder(this@DataManagementActivity) { current, tot, match ->
-                progress.setMessage("Memproses foto $current dari $tot (Cocok: $match)...")
+            try {
+                val (matched, total) = ImageUtils.syncImagesFromFolder(this@DataManagementActivity) { current, tot, match ->
+                    progress.setMessage("Memproses foto $current dari $tot (Cocok: $match)...")
+                }
+                progress.dismiss()
+
+                AlertDialog.Builder(this@DataManagementActivity)
+                    .setTitle("Sinkronisasi Foto Selesai")
+                    .setMessage("Hasil pemindaian folder offline:\n• Berhasil Dihubungkan: $matched produk\n• Total File Foto di Folder: $total berkas\n\nFoto produk sekarang otomatis aktif offline!")
+                    .setPositiveButton("OK", null)
+                    .show()
+
+                loadDataSummaries()
+            } catch (e: Exception) {
+                progress.dismiss()
+                AlertDialog.Builder(this@DataManagementActivity)
+                    .setTitle("Gagal Sinkronisasi Foto")
+                    .setMessage("Terjadi kendala saat memindai folder: ${e.message}")
+                    .setPositiveButton("Tutup", null)
+                    .show()
             }
-            progress.dismiss()
-
-            AlertDialog.Builder(this@DataManagementActivity)
-                .setTitle("Sinkronisasi Foto Selesai")
-                .setMessage("Hasil pemindaian folder offline:\n• Berhasil Dihubungkan: $matched produk\n• Total File Foto di Folder: $total berkas\n\nFoto produk sekarang otomatis aktif offline!")
-                .setPositiveButton("OK", null)
-                .show()
-
-            loadDataSummaries()
         }
     }
 }

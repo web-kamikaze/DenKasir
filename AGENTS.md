@@ -1,4 +1,4 @@
-﻿# AGENTS.md - Aturan & Panduan AI Coding DenKasir
+# AGENTS.md - Aturan & Panduan AI Coding DenKasir
 
 Dokumen ini berisi standar kerja, konvensi kode, dan alur penanganan bug untuk AI agent dalam pengembangan aplikasi **DenKasir**.
 
@@ -54,4 +54,6 @@ Setiap kali AI mendeteksi, menemukan, atau memprediksi potensi bug saat perancan
 2. Buat skema & migrasi terlebih dahulu sebelum business logic.
 3. Selalu validasi input di sisi klien (Kotlin) dan sisi server (Pydantic).
 4. Verifikasi dan catat potensi bug/edge case di `BUG.md`.
-5. **Standar Instalasi Bersih (Clean State)**: Setiap instalasi atau deployment APK baru ke perangkat pengujian wajib menjamin kondisi basis data awal benar-benar bersih (0 produk, 0 transaksi, 0 mutasi kas). Jika menginstal ulang via ADB, pastikan menghapus data lama (`pm clear com.denkasir`) agar aplikasi tidak mewarisi database usang dari instalasi sebelumnya.
+5. **Standar Penanganan Data Perangkat (Update vs Fresh Install)**:
+   - **Device Baru (Fresh Device / Initial Install)**: Kondisi awal aplikasi murni kosong (0 produk, 0 transaksi, 0 mutasi kas).
+   - **Device yang Sudah Terpasang (Update / Maintenance)**: **Dilarang keras menjalankan `pm clear com.denkasir`** atau mereset data pengguna saat build/install APK via ADB (`adb install -r`). Seluruh data yang sudah ada (produk, transaksi, mutasi kas, saldo, konfigurasi toko, dan sesi) **wajib dipertahankan (Zero Data Loss)**. Gunakan migrasi database Room yang aman jika ada perubahan skema database.

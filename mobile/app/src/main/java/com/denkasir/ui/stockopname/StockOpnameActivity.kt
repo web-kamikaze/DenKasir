@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.denkasir.R
 import com.denkasir.data.local.AppDatabase
 import com.denkasir.data.local.entity.ProductEntity
+import com.denkasir.utils.SmartSearchEngine
 import com.denkasir.data.local.entity.PurchaseOrderEntity
 import com.denkasir.data.local.entity.StockOpnameEntity
 import com.denkasir.databinding.ActivityStockOpnameBinding
@@ -24,6 +25,8 @@ import com.denkasir.hardware.scanner.BarcodeScannerActivity
 import com.denkasir.utils.CurrencyUtils
 import com.denkasir.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,6 +40,7 @@ class StockOpnameActivity : AppCompatActivity() {
     private lateinit var binding: ActivityStockOpnameBinding
     private lateinit var adapter: StockOpnameAdapter
     private lateinit var appDatabase: AppDatabase
+    private var searchJob: Job? = null
 
     private var allItems = mutableListOf<OpnameItem>()
     private var realProducts = mutableListOf<ProductEntity>()
@@ -80,6 +84,9 @@ class StockOpnameActivity : AppCompatActivity() {
             }
             realProducts.clear()
             realProducts.addAll(products)
+            withContext(Dispatchers.Default) {
+                SmartSearchEngine.preIndex(products)
+            }
 
             allItems = products.map { p ->
                 OpnameItem(
@@ -102,7 +109,7 @@ class StockOpnameActivity : AppCompatActivity() {
             }
 
             updateMetrics()
-            applyFilter()
+            debounceFilter(immediate = true)
         }
     }
 
@@ -127,25 +134,25 @@ class StockOpnameActivity : AppCompatActivity() {
         binding.chipSemua.setOnClickListener {
             activeFilter = "ALL"
             updateChipStyles()
-            applyFilter()
+            debounceFilter(immediate = true)
         }
 
         binding.chipSelisih.setOnClickListener {
             activeFilter = "SELISIH"
             updateChipStyles()
-            applyFilter()
+            debounceFilter(immediate = true)
         }
 
         binding.chipCocok.setOnClickListener {
             activeFilter = "COCOK"
             updateChipStyles()
-            applyFilter()
+            debounceFilter(immediate = true)
         }
 
         binding.etSearchOpname.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                applyFilter(s.toString())
+                debounceFilter(s?.toString() ?: "", immediate = false)
             }
             override fun afterTextChanged(s: Editable?) {}
         })
@@ -171,20 +178,37 @@ class StockOpnameActivity : AppCompatActivity() {
         binding.chipCocok.setTextColor(if (activeFilter == "COCOK") selectedTextColor else unselectedTextColor)
     }
 
-    private fun applyFilter(query: String = binding.etSearchOpname.text.toString()) {
-        val filtered = allItems.filter { item ->
-            val matchQuery = item.name.contains(query, ignoreCase = true)
-            val matchCategory = when (activeFilter) {
-                "SELISIH" -> !item.isMatched
-                "COCOK" -> item.isMatched
-                else -> true
-            }
-            matchQuery && matchCategory
+    private fun debounceFilter(query: String = binding.etSearchOpname.text.toString(), immediate: Boolean = false) {
+        searchJob?.cancel()
+        val trimmed = query.trim()
+        if (trimmed.isEmpty() || immediate) {
+            executeFilter(trimmed)
+            return
         }
-        adapter.submitList(filtered)
-        val nf = java.text.NumberFormat.getNumberInstance(java.util.Locale("in", "ID")); binding.tvDiperiksaCount.text = "${nf.format(filtered.size)} produk"
+        searchJob = lifecycleScope.launch {
+            delay(120)
+            executeFilter(trimmed)
+        }
     }
 
+    private fun executeFilter(trimmed: String) {
+        lifecycleScope.launch {
+            val filtered = withContext(Dispatchers.Default) {
+                allItems.filter { item ->
+                    val matchCategory = when (activeFilter) {
+                        "SELISIH" -> !item.isMatched
+                        "COCOK" -> item.isMatched
+                        else -> true
+                    }
+                    if (!matchCategory) return@filter false
+                    if (trimmed.isBlank()) true else SmartSearchEngine.matches(trimmed, item.name)
+                }
+            }
+            adapter.submitList(filtered)
+            val nf = java.text.NumberFormat.getNumberInstance(java.util.Locale("in", "ID"))
+            binding.tvDiperiksaCount.text = "${nf.format(filtered.size)} produk"
+        }
+    }
     private fun updateMetrics() {
         val total = allItems.size
         val cocok = allItems.count { it.isMatched }
@@ -217,7 +241,7 @@ class StockOpnameActivity : AppCompatActivity() {
                 val newPhysical = input.text.toString().toIntOrNull() ?: item.physicalStock
                 item.physicalStock = newPhysical
                 updateMetrics()
-                applyFilter()
+                debounceFilter(immediate = true)
                 Toast.makeText(this, "Stok fisik diperbarui: $newPhysical", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Batal", null)

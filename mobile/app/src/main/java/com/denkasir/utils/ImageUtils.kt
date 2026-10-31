@@ -57,24 +57,55 @@ object ImageUtils {
         return R.drawable.ic_nav_produk
     }
 
+    fun normalizeDirectory(path: String?): File? {
+        if (path.isNullOrBlank()) return null
+        val direct = File(path.trim())
+        if (direct.exists() && direct.isDirectory) return direct
+
+        val extPath = Environment.getExternalStorageDirectory().absolutePath
+        val alt1 = if (path.startsWith("/sdcard")) {
+            path.replaceFirst("/sdcard", extPath)
+        } else if (path.startsWith(extPath)) {
+            path.replaceFirst(extPath, "/sdcard")
+        } else {
+            null
+        }
+        if (alt1 != null) {
+            val fAlt = File(alt1.trim())
+            if (fAlt.exists() && fAlt.isDirectory) return fAlt
+        }
+        return null
+    }
+
     fun getResolvedImagesDirectories(context: Context): List<File> {
         val dirs = mutableListOf<File>()
         val customPath = SessionManager.getInstance(context).getCustomImagesDir()
         if (!customPath.isNullOrBlank()) {
-            val customDir = File(customPath)
-            if (customDir.exists() && customDir.isDirectory) {
-                dirs.add(customDir)
-            }
+            normalizeDirectory(customPath)?.let { dirs.add(it) }
         }
         dirs.add(File(context.filesDir, "product_images"))
         val extDir = Environment.getExternalStorageDirectory()
-        dirs.add(File(extDir, "Download/image"))
-        dirs.add(File(extDir, "Download/product_images"))
-        dirs.add(File(extDir, "product_images"))
-        dirs.add(File(extDir, "Pictures/image"))
-        dirs.add(File(extDir, "Pictures/product_images"))
-        dirs.add(File(extDir, "DCIM/image"))
-        context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.let { dirs.add(it) }
+        val candidates = listOf(
+            File(extDir, "image"),
+            File("/sdcard/image"),
+            File(extDir, "Download/image"),
+            File("/sdcard/Download/image"),
+            File(extDir, "product_images"),
+            File("/sdcard/product_images"),
+            File(extDir, "Download/product_images"),
+            File(extDir, "Pictures/image"),
+            File("/sdcard/Pictures/image"),
+            File(extDir, "Pictures/product_images"),
+            File(extDir, "DCIM/image")
+        )
+        for (cand in candidates) {
+            if (cand.exists() && cand.isDirectory && !dirs.any { it.absolutePath == cand.absolutePath }) {
+                dirs.add(cand)
+            }
+        }
+        context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.let {
+            if (it.exists() && it.isDirectory && !dirs.any { d -> d.absolutePath == it.absolutePath }) dirs.add(it)
+        }
         return dirs
     }
 
@@ -353,29 +384,24 @@ object ImageUtils {
     fun resolveActiveImagesDirectory(context: Context): File {
         val custom = SessionManager.getInstance(context).getCustomImagesDir()
         if (!custom.isNullOrBlank()) {
-            val f1 = File(custom)
-            if (f1.exists() && f1.isDirectory) return f1
-            val norm = if (custom.startsWith("/sdcard")) {
-                custom.replace("/sdcard", Environment.getExternalStorageDirectory().absolutePath)
-            } else if (custom.startsWith(Environment.getExternalStorageDirectory().absolutePath)) {
-                custom.replace(Environment.getExternalStorageDirectory().absolutePath, "/sdcard")
-            } else {
-                custom
-            }
-            val f2 = File(norm)
-            if (f2.exists() && f2.isDirectory) return f2
+            normalizeDirectory(custom)?.let { return it }
         }
 
         val extDir = Environment.getExternalStorageDirectory()
         val candidates = listOf(
+            File(extDir, "image"),
+            File("/sdcard/image"),
             File(extDir, "Download/image"),
             File("/sdcard/Download/image"),
             File(extDir, "product_images"),
             File("/sdcard/product_images"),
             File(extDir, "Download/product_images"),
+            File(extDir, "Pictures/image"),
+            File("/sdcard/Pictures/image"),
+            File(extDir, "Pictures/product_images"),
             File(context.filesDir, "product_images")
         )
-        return candidates.firstOrNull { it.exists() && it.isDirectory } ?: candidates.first()
+        return candidates.firstOrNull { it.exists() && it.isDirectory } ?: File(extDir, "image")
     }
 
     suspend fun syncImagesFromFolder(
@@ -384,8 +410,7 @@ object ImageUtils {
         onProgress: ((current: Int, total: Int, matched: Int) -> Unit)? = null
     ): Pair<Int, Int> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val targetFolder = if (!folderPath.isNullOrBlank()) {
-            val f1 = File(folderPath)
-            if (f1.exists() && f1.isDirectory) f1 else resolveActiveImagesDirectory(context)
+            normalizeDirectory(folderPath) ?: resolveActiveImagesDirectory(context)
         } else {
             resolveActiveImagesDirectory(context)
         }
@@ -408,8 +433,9 @@ object ImageUtils {
         val productMapByBarcode = mutableMapOf<String, ProductEntity>()
         for (p in allProducts) {
             if (!p.barcode.isNullOrBlank()) {
-                productMapByBarcode[p.barcode.trim()] = p
+                productMapByBarcode[p.barcode.trim().uppercase(Locale.ROOT)] = p
             }
+            productMapByBarcode[p.id.trim().uppercase(Locale.ROOT)] = p
         }
 
         var matchedCount = 0
@@ -417,7 +443,7 @@ object ImageUtils {
         val now = System.currentTimeMillis()
 
         allFiles.forEachIndexed { index, file ->
-            val baseName = file.nameWithoutExtension.trim()
+            val baseName = file.nameWithoutExtension.trim().uppercase(Locale.ROOT)
             val product = productMapByBarcode[baseName]
             if (product != null) {
                 val updated = product.copy(
@@ -428,11 +454,11 @@ object ImageUtils {
                 productMapByBarcode[baseName] = updated
                 matchedCount++
             }
-            if (batchUpdates.size >= 250) {
+            if (batchUpdates.size >= 500) {
                 db.productDao().insertProducts(batchUpdates)
                 batchUpdates.clear()
             }
-            if ((index + 1) % 50 == 0 || index + 1 == allFiles.size) {
+            if ((index + 1) % 200 == 0 || index + 1 == allFiles.size) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     onProgress?.invoke(index + 1, allFiles.size, matchedCount)
                 }

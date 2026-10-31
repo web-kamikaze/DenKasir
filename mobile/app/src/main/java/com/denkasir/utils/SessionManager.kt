@@ -223,8 +223,8 @@ class SessionManager private constructor(context: Context) {
     fun getReceiptFooterNote(): String {
         return prefs.getString(
             KEY_RECEIPT_FOOTER_NOTE,
-            "Terima Kasih Atas Kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar"
-        ) ?: "Terima Kasih Atas Kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar"
+            "Terima Kasih Atas Kunjungan Anda\nBarang dibeli tidak dapat ditukar"
+        ) ?: "Terima Kasih Atas Kunjungan Anda\nBarang dibeli tidak dapat ditukar"
     }
 
     // ==========================================
@@ -236,5 +236,17 @@ class SessionManager private constructor(context: Context) {
 
     fun getCustomImagesDir(): String? {
         return prefs.getString(KEY_CUSTOM_IMAGES_DIR, null)?.takeIf { it.isNotBlank() }
+    }
+
+    // ==========================================
+    // PREFERENSI KAMERA SCANNER (DEPAN / BELAKANG)
+    // ==========================================
+    fun savePreferredCameraLens(lensFacing: Int) {
+        prefs.edit().putInt("key_camera_lens_facing", lensFacing).apply()
+    }
+
+    fun getPreferredCameraLens(): Int {
+        // 1 = LENS_FACING_BACK, 0 = LENS_FACING_FRONT
+        return prefs.getInt("key_camera_lens_facing", 1)
     }
 }

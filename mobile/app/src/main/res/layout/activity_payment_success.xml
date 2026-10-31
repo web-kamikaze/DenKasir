@@ -46,15 +46,24 @@
 
         <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
-            <TextView
-                android:id="@+id/tvReceiptPreview"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+            <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:fontFamily="monospace"
-                android:textSize="12sp"
-                android:textColor="@color/text_primary" />
+                android:fillViewport="true">
+                <TextView
+                    android:id="@+id/tvReceiptPreview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="14dp"
+                    android:fontFamily="monospace"
+                    android:typeface="monospace"
+                    android:textSize="11.5sp"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="@color/text_primary" />
+            </HorizontalScrollView>
         </ScrollView>
     </androidx.cardview.widget.CardView>
 

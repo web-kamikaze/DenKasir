@@ -91,14 +91,15 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
         return _cartItems.value.sumOf { it.subtotal }
     }
 
-    fun addScannedBarcode(barcode: String, onResult: (Boolean, String) -> Unit) {
+    fun addScannedBarcode(barcode: String, qty: Double = 1.0, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             val product = withContext(Dispatchers.IO) {
                 productDao.getProductByBarcode(barcode)
             }
             if (product != null) {
-                addToCart(product, 1.0)
-                onResult(true, "Ditambahkan: ${product.name}")
+                addToCart(product, qty)
+                val qtyStr = if (qty > 1.0) " (${qty.toInt()}x)" else ""
+                onResult(true, "Ditambahkan: ${product.name}$qtyStr")
             } else {
                 onResult(false, "Produk barcode $barcode belum terdaftar.")
             }

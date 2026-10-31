@@ -1,5 +1,6 @@
 package com.denkasir.ui.pos
 
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -24,7 +25,10 @@ import com.denkasir.databinding.FragmentTransactionsBinding
 import com.denkasir.hardware.printer.BluetoothPrinterDriver
 import com.denkasir.hardware.printer.PrinterSettingActivity
 import com.denkasir.utils.CurrencyUtils
+import com.denkasir.utils.DateFilterHelper
+import com.denkasir.utils.DateFilterRange
 import com.denkasir.utils.ReceiptFormatterUtils
+import com.denkasir.utils.ReportPeriodType
 import com.denkasir.utils.SessionManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
@@ -49,8 +54,13 @@ class TransactionsFragment : Fragment() {
     private var activeTab = "DRAFT" // DRAFT, DIPESAN, SELESAI, KASIR
     private var cashierFilter = "ALL" // ALL, STAFF, OWNER
 
+    // Filter Periode Waktu Transaksi Kasir
+    private var currentPeriod: DateFilterRange = DateFilterHelper.getWeeklyRange()
+    private var isChartExpanded = true
+
     private var allPurchases: List<PurchaseOrderEntity> = emptyList()
     private var allTransactions: List<TransactionEntity> = emptyList()
+    private var allCashFlows: List<CashFlowEntity> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -68,8 +78,11 @@ class TransactionsFragment : Fragment() {
         setupAdapters()
         setupSubTabs()
         setupCashierFilters()
+        setupPeriodFilters()
         setupListeners()
         observeData()
+
+        updatePeriodChipsUI()
     }
 
     private fun setupAdapters() {
@@ -178,23 +191,125 @@ class TransactionsFragment : Fragment() {
         filterAndDisplayCashierTransactions()
     }
 
+    private fun setupPeriodFilters() {
+        binding.chipTrxFilterHariIni.setOnClickListener {
+            applyPeriodFilter(DateFilterHelper.getTodayRange())
+        }
+        binding.chipTrxFilterMingguan.setOnClickListener {
+            applyPeriodFilter(DateFilterHelper.getWeeklyRange())
+        }
+        binding.chipTrxFilterBulanan.setOnClickListener {
+            applyPeriodFilter(DateFilterHelper.getMonthlyRange())
+        }
+        binding.chipTrxFilterKustom.setOnClickListener {
+            showCustomDatePicker()
+        }
+        binding.chipTrxFilterSemua.setOnClickListener {
+            applyPeriodFilter(DateFilterHelper.getAllTimeRange())
+        }
+
+        binding.btnToggleTrxChart.setOnClickListener {
+            isChartExpanded = !isChartExpanded
+            binding.trxChartView.visibility = if (isChartExpanded) View.VISIBLE else View.GONE
+            binding.btnToggleTrxChart.text = if (isChartExpanded) "Sembunyikan" else "Tampilkan"
+        }
+
+        // Interaksi sentuh pada grafik kasir
+        binding.trxChartView.onPointSelectedListener = { _, label, cIn, cOut ->
+            binding.tvTrxActivePeriodLabel.text = "?? $label: Masuk ${CurrencyUtils.formatRupiah(cIn)} | Keluar ${CurrencyUtils.formatRupiah(cOut)}"
+        }
+    }
+
+    private fun showCustomDatePicker() {
+        val cal = Calendar.getInstance()
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH)
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+
+        val startDatePicker = DatePickerDialog(requireContext(), { _, sYear, sMonth, sDay ->
+            val startCal = Calendar.getInstance().apply {
+                set(sYear, sMonth, sDay, 0, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startMs = startCal.timeInMillis
+
+            val endDatePicker = DatePickerDialog(requireContext(), { _, eYear, eMonth, eDay ->
+                val endCal = Calendar.getInstance().apply {
+                    set(eYear, eMonth, eDay, 23, 59, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }
+                val endMs = endCal.timeInMillis
+
+                val customRange = DateFilterHelper.getCustomRange(startMs, endMs)
+                applyPeriodFilter(customRange)
+            }, sYear, sMonth, sDay)
+
+            endDatePicker.setTitle("Pilih Tanggal Selesai (Sampai)")
+            endDatePicker.show()
+        }, year, month, day)
+
+        startDatePicker.setTitle("Pilih Tanggal Mulai (Dari)")
+        startDatePicker.show()
+    }
+
+    private fun applyPeriodFilter(range: DateFilterRange) {
+        currentPeriod = range
+        updatePeriodChipsUI()
+        filterAndDisplayCashierTransactions()
+    }
+
+    private fun updatePeriodChipsUI() {
+        val context = requireContext()
+        val activeBg = R.drawable.bg_category_card_selected
+        val inactiveBg = R.drawable.bg_chip_unselected
+        val activeText = Color.WHITE
+        val inactiveText = ContextCompat.getColor(context, R.color.text_secondary)
+
+        val t = currentPeriod.type
+        binding.chipTrxFilterHariIni.setBackgroundResource(if (t == ReportPeriodType.HARIAN) activeBg else inactiveBg)
+        binding.chipTrxFilterHariIni.setTextColor(if (t == ReportPeriodType.HARIAN) activeText else inactiveText)
+        binding.chipTrxFilterHariIni.paint.isFakeBoldText = (t == ReportPeriodType.HARIAN)
+
+        binding.chipTrxFilterMingguan.setBackgroundResource(if (t == ReportPeriodType.MINGGUAN) activeBg else inactiveBg)
+        binding.chipTrxFilterMingguan.setTextColor(if (t == ReportPeriodType.MINGGUAN) activeText else inactiveText)
+        binding.chipTrxFilterMingguan.paint.isFakeBoldText = (t == ReportPeriodType.MINGGUAN)
+
+        binding.chipTrxFilterBulanan.setBackgroundResource(if (t == ReportPeriodType.BULANAN) activeBg else inactiveBg)
+        binding.chipTrxFilterBulanan.setTextColor(if (t == ReportPeriodType.BULANAN) activeText else inactiveText)
+        binding.chipTrxFilterBulanan.paint.isFakeBoldText = (t == ReportPeriodType.BULANAN)
+
+        binding.chipTrxFilterKustom.setBackgroundResource(if (t == ReportPeriodType.KUSTOM) activeBg else inactiveBg)
+        binding.chipTrxFilterKustom.setTextColor(if (t == ReportPeriodType.KUSTOM) activeText else inactiveText)
+        binding.chipTrxFilterKustom.paint.isFakeBoldText = (t == ReportPeriodType.KUSTOM)
+
+        binding.chipTrxFilterSemua.setBackgroundResource(if (t == ReportPeriodType.SEMUA) activeBg else inactiveBg)
+        binding.chipTrxFilterSemua.setTextColor(if (t == ReportPeriodType.SEMUA) activeText else inactiveText)
+        binding.chipTrxFilterSemua.paint.isFakeBoldText = (t == ReportPeriodType.SEMUA)
+
+        binding.tvTrxActivePeriodLabel.text = "?? " + currentPeriod.detailedLabel
+        binding.tvTrxChartTitle.text = "Grafik Arus Kas & Transaksi (" + currentPeriod.shortLabel + ")"
+    }
+
     private fun filterAndDisplayCashierTransactions() {
-        val filtered = when (cashierFilter) {
-            "STAFF" -> allTransactions.filter { trx ->
-                val name = trx.cashierName ?: ""
-                !name.contains("Owner", ignoreCase = true) && !trx.userId.contains("owner", ignoreCase = true)
+        val range = currentPeriod
+
+        // 1. Filter transaksi berdasarkan periode waktu & tipe kasir
+        val filtered = allTransactions.filter { trx ->
+            val inPeriod = trx.createdAt in range.startMs..range.endMs
+            if (!inPeriod) return@filter false
+
+            val name = trx.cashierName ?: ""
+            when (cashierFilter) {
+                "STAFF" -> !name.contains("Owner", ignoreCase = true) && !trx.userId.contains("owner", ignoreCase = true)
+                "OWNER" -> name.contains("Owner", ignoreCase = true) || trx.userId.contains("owner", ignoreCase = true)
+                else -> true
             }
-            "OWNER" -> allTransactions.filter { trx ->
-                val name = trx.cashierName ?: ""
-                name.contains("Owner", ignoreCase = true) || trx.userId.contains("owner", ignoreCase = true)
-            }
-            else -> allTransactions
         }
 
         transactionAdapter.submitList(filtered)
         binding.tvEmptyMessage.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
 
-        // Update Summary Card
+        // 2. Update Ringkasan Omset
         val totalOmset = filtered.sumOf { it.totalAmount }
         val count = filtered.size
         binding.tvSummaryCashierTotalAmount.text = CurrencyUtils.formatRupiah(totalOmset)
@@ -205,6 +320,11 @@ class TransactionsFragment : Fragment() {
             "OWNER" -> "Omset Transaksi Pemilik (Owner)"
             else -> "Total Omset Semua Akun Kasir"
         }
+
+        // 3. Update Grafik Arus Kas Dinamis di Tab Kasir
+        val periodCashFlows = allCashFlows.filter { it.createdAt in range.startMs..range.endMs }
+        val bucketResult = DateFilterHelper.buildChartBuckets(range, periodCashFlows)
+        binding.trxChartView.setChartData(bucketResult.labels, bucketResult.cashIn, bucketResult.cashOut)
     }
 
     private fun setupListeners() {
@@ -230,6 +350,15 @@ class TransactionsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             appDatabase.transactionDao().getAllTransactions().collectLatest { trxs ->
                 allTransactions = trxs
+                if (activeTab == "KASIR") {
+                    filterAndDisplayCashierTransactions()
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            appDatabase.cashFlowDao().getAllCashFlows().collectLatest { flows ->
+                allCashFlows = flows
                 if (activeTab == "KASIR") {
                     filterAndDisplayCashierTransactions()
                 }
@@ -410,6 +539,8 @@ class TransactionsFragment : Fragment() {
                 }
                 is BluetoothPrinterDriver.PrintResult.Error -> {
                     if (isAdded) {
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Gagal Mencetak Struk")
                         AlertDialog.Builder(requireContext())
                             .setTitle("Gagal Mencetak Struk")
                             .setMessage(result.message + "\n\nApakah Anda ingin membuka Pengaturan Printer Bluetooth?")

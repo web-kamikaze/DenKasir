@@ -30,8 +30,11 @@ import com.denkasir.databinding.FragmentProductsBinding
 import com.denkasir.hardware.scanner.BarcodeScannerActivity
 import com.denkasir.utils.CurrencyUtils
 import com.denkasir.utils.ImageUtils
+import com.denkasir.utils.SmartSearchEngine
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -54,6 +57,7 @@ class ProductsFragment : Fragment() {
     private var allDigitalProducts = listOf<ProductEntity>()
     private var currentSearchQuery = ""
     private var isScanningForSearch = false
+    private var searchJob: Job? = null
 
     private val scanBarcodeLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -140,8 +144,11 @@ class ProductsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             productDao.getRetailProducts().collectLatest { products ->
                 allRetailProducts = products
+                withContext(Dispatchers.Default) {
+                    SmartSearchEngine.preIndex(products)
+                }
                 if (currentTab == "RETAIL") {
-                    filterProducts()
+                    debounceFilterProducts(immediate = true)
                 }
             }
         }
@@ -150,8 +157,11 @@ class ProductsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             productDao.getDigitalProducts().collectLatest { digitalProducts ->
                 allDigitalProducts = digitalProducts
+                withContext(Dispatchers.Default) {
+                    SmartSearchEngine.preIndex(digitalProducts)
+                }
                 if (currentTab == "DIGITAL") {
-                    filterProducts()
+                    debounceFilterProducts(immediate = true)
                 }
             }
         }
@@ -171,7 +181,7 @@ class ProductsFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 currentSearchQuery = s?.toString() ?: ""
                 binding.btnClearSearch.visibility = if (currentSearchQuery.isNotEmpty()) View.VISIBLE else View.GONE
-                filterProducts()
+                debounceFilterProducts(immediate = false)
             }
             override fun afterTextChanged(s: Editable?) {}
         })
@@ -202,7 +212,7 @@ class ProductsFragment : Fragment() {
             binding.indicatorDigital.setBackgroundColor(Color.TRANSPARENT)
 
             binding.etSearchProduct.hint = "Cari nama atau barcode produk..."
-            filterProducts()
+            debounceFilterProducts(immediate = true)
         }
 
         binding.tabDigital.setOnClickListener {
@@ -216,69 +226,75 @@ class ProductsFragment : Fragment() {
             binding.indicatorRetail.setBackgroundColor(Color.TRANSPARENT)
 
             binding.etSearchProduct.hint = "Cari nama paket, pulsa, atau PLN..."
-            filterProducts()
+            debounceFilterProducts(immediate = true)
         }
     }
 
-    private fun filterProducts() {
-        val query = currentSearchQuery.trim().lowercase(Locale.ROOT)
-        if (currentTab == "RETAIL") {
+    private fun debounceFilterProducts(immediate: Boolean = false) {
+        searchJob?.cancel()
+        val query = currentSearchQuery.trim()
+        if (query.isEmpty() || immediate) {
+            executeFilterProducts(query)
+            return
+        }
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(120)
+            executeFilterProducts(query)
+        }
+    }
+
+    private fun executeFilterProducts(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val isRetail = currentTab == "RETAIL"
+            val sourceList = if (isRetail) allRetailProducts else allDigitalProducts
+
             val filtered = if (query.isEmpty()) {
-                allRetailProducts
+                sourceList
             } else {
-                allRetailProducts.filter { product ->
-                    product.name.lowercase(Locale.ROOT).contains(query) ||
-                    (!product.barcode.isNullOrEmpty() && product.barcode.lowercase(Locale.ROOT).contains(query)) ||
-                    product.category.lowercase(Locale.ROOT).contains(query)
+                withContext(Dispatchers.Default) {
+                    SmartSearchEngine.filterProducts(query, sourceList, maxResults = 100)
                 }
             }
-            productAdapter.submitList(filtered)
-            if (filtered.isEmpty()) {
-                binding.layoutEmptyState.visibility = View.VISIBLE
-                binding.rvProductsList.visibility = View.GONE
-                if (query.isEmpty()) {
-                    binding.tvEmptyStateTitle.text = "Belum Ada Produk Fisik"
-                    binding.tvEmptyStateMessage.text = "Klik tombol \"+ Tambah\" di pojok kanan atas untuk menambahkan produk."
+
+            if (isRetail) {
+                productAdapter.submitList(filtered)
+                if (filtered.isEmpty()) {
+                    binding.layoutEmptyState.visibility = View.VISIBLE
+                    binding.rvProductsList.visibility = View.GONE
+                    if (query.isEmpty()) {
+                        binding.tvEmptyStateTitle.text = "Belum Ada Produk Fisik"
+                        binding.tvEmptyStateMessage.text = "Klik tombol \"+ Tambah\" di pojok kanan atas untuk menambahkan produk."
+                    } else {
+                        binding.tvEmptyStateTitle.text = "Produk Tidak Ditemukan"
+                        binding.tvEmptyStateMessage.text = "Tidak ada produk retail dengan kata kunci \"$currentSearchQuery\"."
+                    }
                 } else {
-                    binding.tvEmptyStateTitle.text = "Produk Tidak Ditemukan"
-                    binding.tvEmptyStateMessage.text = "Tidak ada produk retail dengan kata kunci \"$currentSearchQuery\"."
+                    binding.layoutEmptyState.visibility = View.GONE
+                    binding.rvProductsList.visibility = View.VISIBLE
                 }
-            } else {
-                binding.layoutEmptyState.visibility = View.GONE
-                binding.rvProductsList.visibility = View.VISIBLE
-            }
-            binding.rvDigitalProductsList.visibility = View.GONE
-            binding.cardDepositBalance.visibility = View.GONE
-        } else {
-            val filtered = if (query.isEmpty()) {
-                allDigitalProducts
-            } else {
-                allDigitalProducts.filter { product ->
-                    product.name.lowercase(Locale.ROOT).contains(query) ||
-                    product.category.lowercase(Locale.ROOT).contains(query) ||
-                    (!product.barcode.isNullOrEmpty() && product.barcode.lowercase(Locale.ROOT).contains(query))
-                }
-            }
-            digitalProductAdapter.submitList(filtered)
-            if (filtered.isEmpty()) {
-                binding.layoutEmptyState.visibility = View.VISIBLE
                 binding.rvDigitalProductsList.visibility = View.GONE
-                if (query.isEmpty()) {
-                    binding.tvEmptyStateTitle.text = "Belum Ada Layanan Digital"
-                    binding.tvEmptyStateMessage.text = "Layanan pulsa & token PLN belum tersedia."
-                } else {
-                    binding.tvEmptyStateTitle.text = "Layanan Tidak Ditemukan"
-                    binding.tvEmptyStateMessage.text = "Tidak ada layanan digital dengan kata kunci \"$currentSearchQuery\"."
-                }
+                binding.cardDepositBalance.visibility = View.GONE
             } else {
-                binding.layoutEmptyState.visibility = View.GONE
-                binding.rvDigitalProductsList.visibility = View.VISIBLE
+                digitalProductAdapter.submitList(filtered)
+                if (filtered.isEmpty()) {
+                    binding.layoutEmptyState.visibility = View.VISIBLE
+                    binding.rvDigitalProductsList.visibility = View.GONE
+                    if (query.isEmpty()) {
+                        binding.tvEmptyStateTitle.text = "Belum Ada Layanan Digital"
+                        binding.tvEmptyStateMessage.text = "Layanan pulsa & token PLN belum tersedia."
+                    } else {
+                        binding.tvEmptyStateTitle.text = "Layanan Tidak Ditemukan"
+                        binding.tvEmptyStateMessage.text = "Tidak ada layanan digital dengan kata kunci \"$currentSearchQuery\"."
+                    }
+                } else {
+                    binding.layoutEmptyState.visibility = View.GONE
+                    binding.rvDigitalProductsList.visibility = View.VISIBLE
+                }
+                binding.rvProductsList.visibility = View.GONE
+                binding.cardDepositBalance.visibility = View.VISIBLE
             }
-            binding.rvProductsList.visibility = View.GONE
-            binding.cardDepositBalance.visibility = View.VISIBLE
         }
     }
-
     private fun setupRecyclerViews() {
         // Retail Product Adapter
         productAdapter = ProductAdapter(
