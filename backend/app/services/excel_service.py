@@ -84,26 +84,118 @@ async def import_products_excel(session: AsyncSession, file_bytes: bytes, store_
     total = 0
     now = int(time.time() * 1000)
 
-    # Baris 1 adalah header, mulai baris 2
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+    all_rows = list(ws.iter_rows(values_only=True))
+    if not all_rows:
+        return ProductImportResult(total_processed=0, inserted=0, updated=0, failed=0, errors=[])
+
+    # Dynamic header row detection & column mapping
+    header_row_idx = -1
+    col_map = {
+        "barcode": 1,
+        "name": 2,
+        "category": 3,
+        "type": 4,
+        "cost_price": 5,
+        "selling_price": 6,
+        "stock": 7,
+        "min_stock": 8,
+        "h2h_code": 9,
+        "image_path": 10
+    }
+
+    for r_idx, row in enumerate(all_rows[:10]):
+        if not row:
+            continue
+        non_empty = [c for c in row if c is not None and str(c).strip() != ""]
+        if len(non_empty) < 4:
+            continue
+        row_str = " ".join(str(c or "").lower() for c in row)
+        if "nama" in row_str or ("produk" in row_str and "harga" in row_str):
+            header_row_idx = r_idx
+            custom_map = {}
+            for c_idx, c_val in enumerate(row):
+                if not c_val:
+                    continue
+                c_txt = str(c_val).strip().lower()
+                if "barcode" in c_txt or "sku" in c_txt:
+                    custom_map["barcode"] = c_idx
+                elif "gambar" in c_txt or "foto" in c_txt or "image" in c_txt:
+                    custom_map["image_path"] = c_idx
+                elif ("nama" in c_txt or "produk" in c_txt or "barang" in c_txt) and "tipe" not in c_txt and "kategori" not in c_txt:
+                    custom_map["name"] = c_idx
+                elif "kategori" in c_txt or "category" in c_txt:
+                    custom_map["category"] = c_idx
+                elif "tipe" in c_txt or "type" in c_txt or "jenis" in c_txt:
+                    custom_map["type"] = c_idx
+                elif "modal" in c_txt or "hpp" in c_txt or "beli" in c_txt:
+                    custom_map["cost_price"] = c_idx
+                elif "jual" in c_txt or ("harga" in c_txt and "modal" not in c_txt):
+                    custom_map["selling_price"] = c_idx
+                elif "min" in c_txt and ("stok" in c_txt or "stock" in c_txt):
+                    custom_map["min_stock"] = c_idx
+                elif ("stok" in c_txt or "stock" in c_txt or "qty" in c_txt) and "min" not in c_txt:
+                    custom_map["stock"] = c_idx
+                elif "h2h" in c_txt or "provider" in c_txt or "sn" in c_txt:
+                    custom_map["h2h_code"] = c_idx
+
+            if "name" in custom_map:
+                col_map.update(custom_map)
+            break
+
+    start_data_row = header_row_idx + 1 if header_row_idx != -1 else 1
+
+    for row_idx, row in enumerate(all_rows[start_data_row:], start=start_data_row + 1):
         if not row or not any(row):
             continue
+
+        def get_val(key, default=None):
+            idx = col_map.get(key)
+            if idx is not None and idx < len(row):
+                val = row[idx]
+                return val if val not in (None, "-", "") else default
+            return default
+
+        raw_name = get_val("name")
+        if not raw_name:
+            continue
+        name = str(raw_name).strip()
+        if not name:
+            continue
+
         total += 1
         try:
-            barcode = str(row[1]).strip() if len(row) > 1 and row[1] not in (None, "-", "") else None
-            name = str(row[2]).strip() if len(row) > 2 and row[2] else None
-            category = str(row[3]).strip() if len(row) > 3 and row[3] else "Pcs"
-            p_type = str(row[4]).strip().upper() if len(row) > 4 and row[4] else "RETAIL"
-            cost_price = float(row[5]) if len(row) > 5 and row[5] is not None else 0.0
-            selling_price = float(row[6]) if len(row) > 6 and row[6] is not None else 0.0
-            stock = float(row[7]) if len(row) > 7 and row[7] is not None else 0.0
-            min_stock = float(row[8]) if len(row) > 8 and row[8] is not None else 5.0
-            h2h_code = str(row[9]).strip() if len(row) > 9 and row[9] not in (None, "-", "") else None
+            barcode = str(get_val("barcode", "")).strip() or None
+            category = str(get_val("category", "Pcs")).strip() or "Pcs"
+            p_type = str(get_val("type", "RETAIL")).strip().upper() or "RETAIL"
+            if p_type not in ("RETAIL", "DIGITAL"):
+                p_type = "RETAIL"
 
-            if not name:
-                failed += 1
-                errors.append(f"Baris {row_idx}: Nama produk tidak boleh kosong.")
-                continue
+            cost_raw = get_val("cost_price", 0.0)
+            try:
+                cost_price = float(cost_raw) if cost_raw is not None else 0.0
+            except (ValueError, TypeError):
+                cost_price = 0.0
+
+            sell_raw = get_val("selling_price", 0.0)
+            try:
+                selling_price = float(sell_raw) if sell_raw is not None else 0.0
+            except (ValueError, TypeError):
+                selling_price = 0.0
+
+            stock_raw = get_val("stock", 0.0)
+            try:
+                stock = float(stock_raw) if stock_raw is not None else 0.0
+            except (ValueError, TypeError):
+                stock = 0.0
+
+            min_raw = get_val("min_stock", 5.0)
+            try:
+                min_stock = float(min_raw) if min_raw is not None else 5.0
+            except (ValueError, TypeError):
+                min_stock = 5.0
+
+            h2h_code = str(get_val("h2h_code", "")).strip() or None
+            img_path = str(get_val("image_path", "")).strip() or None
 
             # Cek jika barcode sudah ada
             existing = None
@@ -121,6 +213,8 @@ async def import_products_excel(session: AsyncSession, file_bytes: bytes, store_
                 existing.stock = stock
                 existing.min_stock_alert = min_stock
                 existing.provider_code = h2h_code
+                if img_path:
+                    existing.image_path = img_path
                 existing.updated_at = now
                 updated += 1
             else:
@@ -136,6 +230,7 @@ async def import_products_excel(session: AsyncSession, file_bytes: bytes, store_
                     stock=stock,
                     min_stock_alert=min_stock,
                     provider_code=h2h_code,
+                    image_path=img_path,
                     created_at=now,
                     updated_at=now,
                     sync_status="SYNCED"

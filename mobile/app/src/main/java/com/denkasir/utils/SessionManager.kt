@@ -37,6 +37,7 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_RECEIPT_LAYOUT_STYLE = "key_receipt_layout_style"
         private const val KEY_RECEIPT_HEADER_SLOGAN = "key_receipt_header_slogan"
         private const val KEY_RECEIPT_FOOTER_NOTE = "key_receipt_footer_note"
+        private const val KEY_CUSTOM_IMAGES_DIR = "key_custom_images_dir"
 
         const val ROLE_OWNER = "OWNER"
         const val ROLE_KASIR = "KASIR"
@@ -224,5 +225,16 @@ class SessionManager private constructor(context: Context) {
             KEY_RECEIPT_FOOTER_NOTE,
             "Terima Kasih Atas Kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar"
         ) ?: "Terima Kasih Atas Kunjungan Anda!\nBarang yang dibeli tidak dapat ditukar"
+    }
+
+    // ==========================================
+    // FOLDER FOTO PRODUK OFFLINE KUSTOM
+    // ==========================================
+    fun saveCustomImagesDir(path: String?) {
+        prefs.edit().putString(KEY_CUSTOM_IMAGES_DIR, path?.trim()).apply()
+    }
+
+    fun getCustomImagesDir(): String? {
+        return prefs.getString(KEY_CUSTOM_IMAGES_DIR, null)?.takeIf { it.isNotBlank() }
     }
 }

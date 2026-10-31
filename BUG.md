@@ -8,7 +8,7 @@ Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kega
 
 | Total Bug | OPEN | IN_PROGRESS | RESOLVED | WONT_FIX |
 |---|---|---|---|---|
-| 25 | 0 | 0 | 25 | 0 |
+| 28 | 0 | 0 | 28 | 0 |
 
 ---
 
@@ -324,3 +324,52 @@ Dokumen ini mencatat seluruh potensi bug, race condition, isu performa, dan kega
   1. Kosongkan seluruh data awal (initial seed data dummy pada keranjang kasir, arus kas, hutang, pembelian, dan katalog) pada instalasi baru agar bersih dan siap pakai.
   2. Bangun DataManagementActivity dan utilitas DataExporterImporter lengkap: Backup & Restore Room SQLite .db/.sql, ekspor/impor katalog produk format XLSX & CSV, serta ekspor laporan BKU/Penjualan format XLSX & CSV.
   3. Tambahkan dialog input URL gambar pada form produk lengkap dengan downloader otomatis ke storage internal (filesDir/product_images/) serta fitur unduh masal gambar URL katalog.
+
+---
+
+### [BUG-026]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Backend & Mobile / XLSX Importer & Header Alignment
+- **Tingkat Keparahan**: HIGH
+- **Status**: RESOLVED
+- **Deskripsi Masalah**: Impor berkas Excel (.xlsx) katalog produk di sisi Android (DataExporterImporter.kt) dan backend FastAPI (excel_service.py) sebelumnya mengandalkan indeks nomor kolom statis (hardcoded index). Jika berkas memiliki baris banner judul, kolom 'Margin Laba (Rp)', atau variasi urutan kolom, parser membaca nilai kolom yang keliru (misalnya Margin Laba terbaca sebagai Stok, atau Stok terbaca sebagai Min Stok Alert).
+- **Dampak / Potensi Resiko**: Nilai kuantitas stok barang dan harga modal/jual menjadi tertukar atau korup saat kasir/owner mengimpor file template Excel ke database.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Perbarui parser di DataExporterImporter.kt (mobile) dan excel_service.py (backend) menggunakan dynamic header-based mapping yang memindai baris header dan mencocokkan nama kolom secara otomatis (case-insensitive & keyword matching) serta aman terhadap baris banner/kosong.
+  2. Bangkitkan file template resmi terstandar 'Template_DenKasir_Produk_dan_Toko.xlsx' di root project (D:\SERVER\DenKasir) lengkap dengan sheet 'Katalog Produk', 'Data Toko', dan 'Panduan Pengisian' dengan styling profesional, format Barcode sebagai TEXT ('@'), dan formula margin laba.
+
+---
+
+### [BUG-027]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile & Backend / Large XLSX Importer & Subtitle Banner Misalignment
+- **Tingkat Keparahan**: CRITICAL
+- **Status**: RESOLVED
+- **Deskripsi Masalah**:
+  1. Pada berkas katalog Excel yang memiliki baris catatan/petunjuk di bawah judul (misal: "Tips: Kolom Kategori & Tipe..."), detektor header sebelumnya membaca kata "Produk" pada baris catatan tersebut dan secara keliru menganggapnya sebagai baris header kolom. Akibatnya, pemetaan kolom gambar meleset ke kolom 0 ("No"), dan nilai URL gambar tidak tersimpan atau tersimpan sebagai tanda strip ("-").
+  2. Pada mobile APK versi build sebelumnya, importer membaca kolom indeks statis ke-10 ("Kode H2H", bernilai "-") alih-alih kolom ke-11 ("Gambar Produk"), sehingga ribuan produk yang diimpor dari file seperti 'Katalog_Alfamart_DenKasir_B700_20261031.xlsx' menyimpan '-' ke kolom imagePath database Room.
+  3. Launcher pemilih file Excel di `ProductsFragment.kt` sebelumnya hanya memunculkan Toast tanpa memproses Stream InputStream ke Room Database.
+  4. Impor ribuan item (8.000+ produk) secara individual per baris berpotensi memicu ANR (Application Not Responding) karena ketiadaan in-memory cache dan batch transaction.
+- **Dampak / Potensi Resiko**: Foto produk dari URL internet (seperti CDN Alfagift c.alfagift.id) tidak muncul sama sekali di layar kasir maupun daftar produk (hanya menampilkan ikon default), dan proses impor ribuan barang berjalan sangat lambat.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Tambahkan validasi jumlah sel aktif (`nonEmptyCount >= 4`) pada baris calon header di `DataExporterImporter.kt` dan `excel_service.py` untuk mengabaikan banner/catatan merged cell secara akurat.
+  2. Implementasikan caching hash map produk eksisting O(1) dan batch insert per 500 entitas ke Room Database, mempercepat impor 8.600+ produk menjadi hanya ~2-3 detik.
+  3. Hubungkan `importExcelLauncher` di `ProductsFragment.kt` dengan `processImportExcel` lengkap dengan ProgressDialog interaktif.
+  4. Kompilasi ulang dan install update debug APK ke perangkat fisik Android yang terhubung via ADB.
+
+---
+
+### [BUG-028]
+- **Tanggal**: 2026-10-31
+- **Modul/Komponen**: Mobile / Offline Storage & Image Directory Resolver
+- **Tingkat Keparahan**: MEDIUM
+- **Status**: RESOLVED
+- **Deskripsi Masalah**:
+  1. Aplikasi kasir sebelumnya hanya memeriksa foto offline pada direktori internal aplikasi dan direktori statis `/sdcard/product_images/`.
+  2. Jika pemilik toko memiliki ribuan file foto produk offline di folder download atau folder kustom (misal: `/sdcard/Download/image/` hasil ekstrak script scraper `D:\SERVER\DenKasir\DataProduk\image\{barcode}.jpg`), sistem belum menyediakan antarmuka pemilih folder kustom dan belum memindai file berdasarkan barcode secara otomatis di folder tersebut.
+- **Dampak / Potensi Resiko**: Pemilik toko harus mengunduh ulang foto dari web via kuota internet HP, meskipun mereka sudah memiliki kumpulan file foto offline di memori HP.
+- **Rekomendasi / Solusi Perbaikan**:
+  1. Perluas `ImageUtils.findProductImageTarget` untuk mencari file `{barcode}.jpg`, `{barcode}.png`, `{barcode}.jpeg`, `{barcode}.webp` di berbagai folder publik populer (`/sdcard/Download/image/`, `/sdcard/Download/product_images/`, `/sdcard/Pictures/image/`, dll) dan memprioritaskan file offline lokal sebelum fallback ke link URL web.
+  2. Tambahkan pengaturan folder kustom di `SessionManager` (`saveCustomImagesDir` / `getCustomImagesDir`).
+  3. Tambahkan tombol **'Pilih / Atur Folder Foto Offline'** dan **'Sinkronkan Foto dari Folder Lokal'** pada kartu Pengelolaan Data di `activity_data_management.xml` dan `DataManagementActivity.kt`, lengkap dengan pemindaian otomatis barcode dan notifikasi hasil pencocokan.
+  4. Kompilasi ulang dan update APK langsung ke perangkat Android.

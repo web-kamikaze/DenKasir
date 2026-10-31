@@ -105,7 +105,7 @@ class ProductsFragment : Fragment() {
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            Toast.makeText(requireContext(), "Memproses impor berkas Excel produk ke database...", Toast.LENGTH_LONG).show()
+            processImportExcel(uri)
         }
     }
 
@@ -699,6 +699,49 @@ class ProductsFragment : Fragment() {
         }
 
         dialog.show()
+    }
+
+    private fun processImportExcel(uri: Uri) {
+        val progress = android.app.ProgressDialog(requireContext()).apply {
+            setMessage("Membaca dan memproses impor berkas produk...")
+            setCancelable(false)
+            show()
+        }
+
+        lifecycleScope.launch {
+            try {
+                val (inserted, updated) = withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openInputStream(uri)?.use { stream ->
+                        val fileName = uri.lastPathSegment?.lowercase() ?: ""
+                        if (fileName.endsWith(".csv")) {
+                            com.denkasir.utils.DataExporterImporter.importProductsFromCsv(requireContext(), stream)
+                        } else {
+                            try {
+                                com.denkasir.utils.DataExporterImporter.importProductsFromXlsx(requireContext(), stream)
+                            } catch (e: Exception) {
+                                requireContext().contentResolver.openInputStream(uri)?.use { stream2 ->
+                                    com.denkasir.utils.DataExporterImporter.importProductsFromCsv(requireContext(), stream2)
+                                } ?: Pair(0, 0)
+                            }
+                        }
+                    } ?: Pair(0, 0)
+                }
+
+                progress.dismiss()
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Impor Produk Berhasil!")
+                    .setMessage("Hasil proses impor berkas:\n- Produk Baru Ditambahkan: $inserted item\n- Produk Diperbarui: $updated item")
+                    .setPositiveButton("OK", null)
+                    .show()
+            } catch (e: Exception) {
+                progress.dismiss()
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Gagal Impor Berkas")
+                    .setMessage("Terjadi kesalahan saat memproses file: ${e.message}")
+                    .setPositiveButton("Tutup", null)
+                    .show()
+            }
+        }
     }
 
     private fun importSampleMasterProducts() {

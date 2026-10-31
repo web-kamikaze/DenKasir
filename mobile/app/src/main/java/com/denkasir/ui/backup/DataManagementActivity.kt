@@ -3,7 +3,10 @@ package com.denkasir.ui.backup
 import android.app.ProgressDialog
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +18,7 @@ import com.denkasir.databinding.ActivityDataManagementBinding
 import com.denkasir.ui.MainActivity
 import com.denkasir.utils.DataExporterImporter
 import com.denkasir.utils.ImageUtils
+import com.denkasir.utils.SessionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,6 +28,30 @@ class DataManagementActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDataManagementBinding
     private lateinit var appDatabase: AppDatabase
+
+    private val selectFolderLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                val path = uri.path ?: uri.toString()
+                val resolvedPath = if (path.contains("primary:")) {
+                    "/sdcard/" + path.substringAfter("primary:")
+                } else {
+                    path
+                }
+                SessionManager.getInstance(this).saveCustomImagesDir(resolvedPath)
+                Toast.makeText(this, "Folder foto offline diatur ke: $resolvedPath", Toast.LENGTH_LONG).show()
+                loadDataSummaries()
+            } catch (e: Exception) {
+                val fallbackPath = "/sdcard/Download/image"
+                SessionManager.getInstance(this).saveCustomImagesDir(fallbackPath)
+                Toast.makeText(this, "Menggunakan folder: $fallbackPath", Toast.LENGTH_SHORT).show()
+                loadDataSummaries()
+            }
+        }
+    }
 
     private val restoreDbLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -50,6 +78,35 @@ class DataManagementActivity : AppCompatActivity() {
 
         setupListeners()
         loadDataSummaries()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadDataSummaries()
+    }
+
+    private fun checkStoragePermissionAndProceed(onGranted: () -> Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                AlertDialog.Builder(this)
+                    .setTitle("Izin Akses Berkas Diperlukan")
+                    .setMessage("Untuk membaca foto produk offline di folder /sdcard/Download/image/ atau folder kustom, DenKasir memerlukan izin 'Akses Semua File'.\n\nSilakan aktifkan toggle izin pada layar pengaturan.")
+                    .setPositiveButton("Buka Pengaturan") { _, _ ->
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            intent.setData(Uri.parse("package:$packageName"))
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton("Batal", null)
+                    .show()
+                return
+            }
+        }
+        onGranted()
     }
 
     private fun setupListeners() {
@@ -101,6 +158,14 @@ class DataManagementActivity : AppCompatActivity() {
         }
 
         // Section 3: Gambar Offline
+        binding.btnSetCustomImageFolder.setOnClickListener {
+            checkStoragePermissionAndProceed { showSelectImageFolderDialog() }
+        }
+
+        binding.btnScanLocalImagesFolder.setOnClickListener {
+            checkStoragePermissionAndProceed { scanAndSyncLocalImagesFolder() }
+        }
+
         binding.btnDownloadWebImages.setOnClickListener {
             downloadAllWebImages()
         }
@@ -128,6 +193,8 @@ class DataManagementActivity : AppCompatActivity() {
             binding.tvDatabaseSummary.text = "• Produk Terdaftar: $productCount item\n• Riwayat Transaksi: $trxCount nota\n• Mutasi Kas BKU: $cashCount mutasi\n• Catatan Hutang/Kasbon: $debtCount data"
             binding.tvImageStorageInfo.text = "Tersimpan: $imageCount foto (${ImageUtils.formatFileSize(imageBytes)}) di folder penyimpanan internal perangkat."
             binding.tvStoragePathInfo.text = "Lokasi Ekspor: ${DataExporterImporter.getExportDir(this@DataManagementActivity).absolutePath}"
+            val folderSummary = withContext(Dispatchers.IO) { ImageUtils.getActiveImagesFolderSummary(this@DataManagementActivity) }
+            binding.tvCustomFolderInfo.text = folderSummary
         }
     }
 
@@ -437,5 +504,93 @@ class DataManagementActivity : AppCompatActivity() {
             }
             .setNegativeButton("Batal", null)
             .show()
+    }
+    private fun showSelectImageFolderDialog() {
+        val options = arrayOf(
+            "Gunakan Folder Standar (/sdcard/Download/image/)",
+            "Gunakan Folder (/sdcard/product_images/)",
+            "Pilih Folder Lewat Pemilih Berkas HP (SAF)",
+            "Ketik Lokasi Folder Manual",
+            "Reset ke Deteksi Otomatis"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Pilih Folder Foto Offline")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        SessionManager.getInstance(this).saveCustomImagesDir("/sdcard/Download/image")
+                        Toast.makeText(this, "Folder diatur ke: /sdcard/Download/image", Toast.LENGTH_SHORT).show()
+                        loadDataSummaries()
+                    }
+                    1 -> {
+                        SessionManager.getInstance(this).saveCustomImagesDir("/sdcard/product_images")
+                        Toast.makeText(this, "Folder diatur ke: /sdcard/product_images", Toast.LENGTH_SHORT).show()
+                        loadDataSummaries()
+                    }
+                    2 -> {
+                        try {
+                            selectFolderLauncher.launch(null)
+                        } catch (e: Exception) {
+                            showManualFolderInputDialog()
+                        }
+                    }
+                    3 -> {
+                        showManualFolderInputDialog()
+                    }
+                    4 -> {
+                        SessionManager.getInstance(this).saveCustomImagesDir(null)
+                        Toast.makeText(this, "Folder foto di-reset ke deteksi otomatis", Toast.LENGTH_SHORT).show()
+                        loadDataSummaries()
+                    }
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showManualFolderInputDialog() {
+        val input = EditText(this).apply {
+            hint = "/sdcard/Download/image"
+            setText(SessionManager.getInstance(this@DataManagementActivity).getCustomImagesDir() ?: "/sdcard/Download/image")
+            setPadding(40, 30, 40, 30)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Ketik Jalur Folder Foto")
+            .setMessage("Masukkan jalur folder lengkap tempat Anda menyimpan foto produk offline:")
+            .setView(input)
+            .setPositiveButton("Simpan") { _, _ ->
+                val p = input.text.toString().trim()
+                if (p.isNotBlank()) {
+                    SessionManager.getInstance(this).saveCustomImagesDir(p)
+                    Toast.makeText(this, "Folder berhasil disimpan: $p", Toast.LENGTH_SHORT).show()
+                    loadDataSummaries()
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun scanAndSyncLocalImagesFolder() {
+        val progress = ProgressDialog(this).apply {
+            setMessage("Memindai folder foto offline dan mencocokkan ke barcode produk...")
+            setCancelable(false)
+            show()
+        }
+
+        lifecycleScope.launch {
+            val (matched, total) = ImageUtils.syncImagesFromFolder(this@DataManagementActivity) { current, tot, match ->
+                progress.setMessage("Memproses foto $current dari $tot (Cocok: $match)...")
+            }
+            progress.dismiss()
+
+            AlertDialog.Builder(this@DataManagementActivity)
+                .setTitle("Sinkronisasi Foto Selesai")
+                .setMessage("Hasil pemindaian folder offline:\n• Berhasil Dihubungkan: $matched produk\n• Total File Foto di Folder: $total berkas\n\nFoto produk sekarang otomatis aktif offline!")
+                .setPositiveButton("OK", null)
+                .show()
+
+            loadDataSummaries()
+        }
     }
 }

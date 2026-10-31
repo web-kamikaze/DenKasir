@@ -187,56 +187,144 @@ object DataExporterImporter {
         var updated = 0
         val now = System.currentTimeMillis()
 
-        for (rowIdx in 1..sheet.lastRowNum) {
-            val row = sheet.getRow(rowIdx) ?: continue
+        // 1. Deteksi baris header dan mapping kolom secara dinamis
+        var headerRowIdx = -1
+        var colBarcode = 1
+        var colName = 2
+        var colCategory = 3
+        var colType = 4
+        var colCost = 5
+        var colSell = 6
+        var colStock = 7
+        var colMinStock = 8
+        var colH2h = 9
+        var colImg = 10
 
-            val barcodeVal = getCellValueAsString(row.getCell(1))?.takeIf { it.isNotBlank() }
-            val nameVal = getCellValueAsString(row.getCell(2)) ?: continue
-            if (nameVal.isBlank()) continue
+        for (r in 0..minOf(10, sheet.lastRowNum)) {
+            val row = sheet.getRow(r) ?: continue
+            var nonEmptyCount = 0
+            for (c in 0 until row.lastCellNum) {
+                if (!getCellValueAsString(row.getCell(c)).isNullOrBlank()) nonEmptyCount++
+            }
+            // Abaikan baris banner/instruksi yang hanya memiliki sedikit kolom terisi
+            if (nonEmptyCount < 4) continue
 
-            val categoryVal = getCellValueAsString(row.getCell(3)) ?: "Pcs"
-            val typeVal = getCellValueAsString(row.getCell(4))?.uppercase() ?: "RETAIL"
-            val costVal = getCellValueAsDouble(row.getCell(5)) ?: 0.0
-            val sellVal = getCellValueAsDouble(row.getCell(6)) ?: 0.0
-            val stockVal = getCellValueAsDouble(row.getCell(8)) ?: 0.0
-            val minStockVal = getCellValueAsDouble(row.getCell(9)) ?: 5.0
-            val imgVal = getCellValueAsString(row.getCell(10))?.takeIf { it.isNotBlank() }
-
-            val existing = if (!barcodeVal.isNullOrBlank()) db.productDao().getProductByBarcode(barcodeVal) else null
-            if (existing != null) {
-                db.productDao().updateProduct(
-                    existing.copy(
-                        name = nameVal,
-                        category = categoryVal,
-                        productType = typeVal,
-                        costPrice = costVal,
-                        sellingPrice = sellVal,
-                        stock = stockVal,
-                        minStockAlert = minStockVal,
-                        imagePath = imgVal ?: existing.imagePath,
-                        updatedAt = now
-                    )
-                )
-                updated++
-            } else {
-                db.productDao().insertProduct(
-                    ProductEntity(
-                        barcode = barcodeVal,
-                        name = nameVal,
-                        category = categoryVal,
-                        productType = typeVal,
-                        costPrice = costVal,
-                        sellingPrice = sellVal,
-                        stock = stockVal,
-                        minStockAlert = minStockVal,
-                        imagePath = imgVal,
-                        createdAt = now,
-                        updatedAt = now
-                    )
-                )
-                inserted++
+            val rowStrBuilder = StringBuilder()
+            for (c in 0 until row.lastCellNum) {
+                rowStrBuilder.append(getCellValueAsString(row.getCell(c))?.lowercase() ?: "").append(" ")
+            }
+            val rowStr = rowStrBuilder.toString()
+            if (rowStr.contains("nama") || (rowStr.contains("produk") && rowStr.contains("harga"))) {
+                headerRowIdx = r
+                for (c in 0 until row.lastCellNum) {
+                    val cTxt = getCellValueAsString(row.getCell(c))?.lowercase()?.trim() ?: continue
+                    when {
+                        cTxt.contains("barcode") || cTxt.contains("sku") -> colBarcode = c
+                        cTxt.contains("gambar") || cTxt.contains("foto") || cTxt.contains("image") || cTxt.contains("url") -> colImg = c
+                        (cTxt.contains("nama") || cTxt.contains("produk") || cTxt.contains("barang")) &&
+                            !cTxt.contains("tipe") && !cTxt.contains("kategori") && !cTxt.contains("gambar") && !cTxt.contains("url") -> colName = c
+                        cTxt.contains("kategori") || cTxt.contains("category") -> colCategory = c
+                        cTxt.contains("tipe") || cTxt.contains("type") || cTxt.contains("jenis") -> colType = c
+                        cTxt.contains("modal") || cTxt.contains("hpp") || cTxt.contains("beli") -> colCost = c
+                        cTxt.contains("jual") || (cTxt.contains("harga") && !cTxt.contains("modal")) -> colSell = c
+                        cTxt.contains("min") && (cTxt.contains("stok") || cTxt.contains("stock")) -> colMinStock = c
+                        (cTxt.contains("stok") || cTxt.contains("stock") || cTxt.contains("qty")) && !cTxt.contains("min") -> colStock = c
+                        cTxt.contains("h2h") || cTxt.contains("provider") || cTxt.contains("sn") || cTxt.contains("kode") -> colH2h = c
+                    }
+                }
+                break
             }
         }
+
+        val startRow = if (headerRowIdx != -1) headerRowIdx + 1 else 1
+
+        // Preload map produk eksisting berdasarkan barcode untuk pencarian kilat O(1)
+        val existingProductsList = db.productDao().getAllProductsList()
+        val existingMapByBarcode = mutableMapOf<String, ProductEntity>()
+        for (ep in existingProductsList) {
+            if (!ep.barcode.isNullOrBlank()) {
+                existingMapByBarcode[ep.barcode] = ep
+            }
+        }
+
+        val batchToSave = mutableListOf<ProductEntity>()
+
+        for (rowIdx in startRow..sheet.lastRowNum) {
+            val row = sheet.getRow(rowIdx) ?: continue
+
+            val rawName = if (colName in 0 until row.lastCellNum) getCellValueAsString(row.getCell(colName)) else null
+            if (rawName.isNullOrBlank()) continue
+            val nameVal = rawName.trim()
+
+            val barcodeVal = if (colBarcode in 0 until row.lastCellNum) {
+                getCellValueAsString(row.getCell(colBarcode))?.takeIf { it.isNotBlank() && it != "-" }
+            } else null
+
+            val categoryVal = if (colCategory in 0 until row.lastCellNum) {
+                getCellValueAsString(row.getCell(colCategory))?.takeIf { it.isNotBlank() } ?: "Pcs"
+            } else "Pcs"
+
+            val typeVal = if (colType in 0 until row.lastCellNum) {
+                getCellValueAsString(row.getCell(colType))?.uppercase()?.takeIf { it == "RETAIL" || it == "DIGITAL" } ?: "RETAIL"
+            } else "RETAIL"
+
+            val costVal = if (colCost in 0 until row.lastCellNum) getCellValueAsDouble(row.getCell(colCost)) ?: 0.0 else 0.0
+            val sellVal = if (colSell in 0 until row.lastCellNum) getCellValueAsDouble(row.getCell(colSell)) ?: 0.0 else 0.0
+            val stockVal = if (colStock in 0 until row.lastCellNum) getCellValueAsDouble(row.getCell(colStock)) ?: 0.0 else 0.0
+            val minStockVal = if (colMinStock in 0 until row.lastCellNum) getCellValueAsDouble(row.getCell(colMinStock)) ?: 5.0 else 5.0
+            val h2hVal = if (colH2h in 0 until row.lastCellNum) getCellValueAsString(row.getCell(colH2h))?.takeIf { it.isNotBlank() && it != "-" } else null
+            val imgVal = if (colImg in 0 until row.lastCellNum) getCellValueAsString(row.getCell(colImg))?.takeIf { it.isNotBlank() && it != "-" } else null
+
+            val existing = if (!barcodeVal.isNullOrBlank()) existingMapByBarcode[barcodeVal] else null
+            if (existing != null) {
+                val updatedProd = existing.copy(
+                    name = nameVal,
+                    category = categoryVal,
+                    productType = typeVal,
+                    costPrice = costVal,
+                    sellingPrice = sellVal,
+                    stock = stockVal,
+                    minStockAlert = minStockVal,
+                    providerCode = h2hVal ?: existing.providerCode,
+                    imagePath = imgVal ?: existing.imagePath,
+                    updatedAt = now
+                )
+                batchToSave.add(updatedProd)
+                if (!barcodeVal.isNullOrBlank()) { existingMapByBarcode[barcodeVal] = updatedProd }
+                updated++
+            } else {
+                val newProd = ProductEntity(
+                    barcode = barcodeVal,
+                    name = nameVal,
+                    category = categoryVal,
+                    productType = typeVal,
+                    costPrice = costVal,
+                    sellingPrice = sellVal,
+                    stock = stockVal,
+                    minStockAlert = minStockVal,
+                    providerCode = h2hVal,
+                    imagePath = imgVal,
+                    createdAt = now,
+                    updatedAt = now
+                )
+                batchToSave.add(newProd)
+                if (!barcodeVal.isNullOrBlank()) {
+                    existingMapByBarcode[barcodeVal] = newProd
+                }
+                inserted++
+            }
+
+            if (batchToSave.size >= 500) {
+                db.productDao().insertProducts(batchToSave)
+                batchToSave.clear()
+            }
+        }
+
+        if (batchToSave.isNotEmpty()) {
+            db.productDao().insertProducts(batchToSave)
+            batchToSave.clear()
+        }
+
         workbook.close()
         return Pair(inserted, updated)
     }

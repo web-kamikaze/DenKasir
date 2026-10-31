@@ -336,11 +336,47 @@
                         android:layout_marginTop="4dp"
                         android:layout_marginBottom="12dp" />
 
+                    <TextView
+                        android:id="@+id/tvCustomFolderInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Folder Foto: Otomatis (/sdcard/Download/image/)"
+                        android:textColor="#2563EB"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:background="#EFF6FF"
+                        android:padding="8dp"
+                        android:layout_marginBottom="10dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSetCustomImageFolder"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="Pilih / Atur Folder Foto Offline"
+                        android:textColor="#2563EB"
+                        android:textStyle="bold"
+                        app:strokeColor="#2563EB"
+                        app:strokeWidth="1.5dp"
+                        app:cornerRadius="10dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnScanLocalImagesFolder"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="8dp"
+                        android:text="Sinkronkan Foto dari Folder Lokal"
+                        android:textColor="@android:color/white"
+                        android:textStyle="bold"
+                        app:backgroundTint="#059669"
+                        app:cornerRadius="10dp" />
+
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnDownloadWebImages"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
-                        android:text="Unduh Semua Foto Produk Web ke HP"
+                        android:layout_marginTop="8dp"
+                        android:text="Unduh Semua Foto Produk dari Link Web"
                         android:textColor="@android:color/white"
                         android:textStyle="bold"
                         app:backgroundTint="#7C3AED"

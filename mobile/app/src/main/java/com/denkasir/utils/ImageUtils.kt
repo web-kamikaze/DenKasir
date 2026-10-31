@@ -2,6 +2,7 @@ package com.denkasir.utils
 
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
 import android.widget.ImageView
 import androidx.core.content.FileProvider
@@ -29,28 +30,52 @@ object ImageUtils {
         val name = productName?.trim()?.uppercase(Locale.ROOT) ?: ""
         val type = productType?.trim()?.uppercase(Locale.ROOT) ?: ""
 
-        if (type == "DIGITAL" || cat.contains("PLN") || name.contains("PLN") || name.contains("LISTRIK")) {
-            return R.drawable.ic_digital_listrik_pln
+        if (type == "DIGITAL" || cat.contains("DIGITAL") || cat.contains("PLN") || name.contains("PLN") || name.contains("LISTRIK")) {
+            if (name.contains("PLN") || name.contains("LISTRIK") || cat.contains("PLN")) return R.drawable.ic_digital_listrik_pln
+            if (cat.contains("E-MONEY") || name.contains("GOPAY") || name.contains("OVO") || name.contains("DANA") || name.contains("SHOPEEPAY")) return R.drawable.ic_digital_uang_elektronik
+            if (name.contains("PAKET DATA") || name.contains("KUOTA") || name.contains("GB")) return R.drawable.ic_digital_paket_data
+            return R.drawable.ic_digital_pulsa
         }
         if (cat.contains("PULSA") || name.contains("PULSA") || name.contains("TELKOMSEL") || name.contains("INDOSAT") || name.contains("XL") || name.contains("TRI") || name.contains("AXIS") || name.contains("SMARTFREN")) {
             return R.drawable.ic_digital_pulsa
         }
-        if (cat.contains("PAKET DATA") || cat.contains("DATA") || name.contains("PAKET DATA") || name.contains("KUOTA") || name.contains("GB")) {
+        if (cat.contains("PAKET DATA") || (cat.contains("DATA") && !cat.contains("DAPUR")) || name.contains("PAKET DATA") || name.contains("KUOTA") || name.contains("GB")) {
             return R.drawable.ic_digital_paket_data
         }
-        if (cat.contains("PDAM") || cat.contains("AIR") || name.contains("PDAM") || name.contains("AIR")) {
+        if (cat.contains("PDAM") || (cat.contains("AIR") && type == "DIGITAL") || name.contains("PDAM")) {
             return R.drawable.ic_digital_pdam
         }
         if (cat.contains("E-MONEY") || cat.contains("UANG") || cat.contains("DOMPET") || name.contains("GOPAY") || name.contains("OVO") || name.contains("DANA") || name.contains("SHOPEEPAY")) {
             return R.drawable.ic_digital_uang_elektronik
         }
-        if (cat == "KG" || cat.contains("CURAH") || name.contains("BERAS") || name.contains("GULA") || name.contains("TEPUNG") || name.contains("TELUR")) {
+        if (cat.contains("SEGAR") || cat.contains("BEKU") || cat == "KG" || cat.contains("CURAH") || name.contains("BERAS") || name.contains("GULA") || name.contains("TEPUNG") || name.contains("TELUR") || name.contains("DAGING") || name.contains("AYAM") || name.contains("IKAN") || name.contains("BUAH") || name.contains("SAYUR")) {
             return R.drawable.ic_kg
         }
-        if (cat == "PCS" || name.contains("INDOMIE") || name.contains("MIE") || name.contains("MINYAK") || name.contains("SABUN") || name.contains("KOPI") || name.contains("SUSU") || name.contains("KECAP")) {
+        if (cat.contains("MAKANAN") || cat.contains("MINUMAN") || cat.contains("PERSONAL") || cat.contains("TUBUH") || cat.contains("IBU") || cat.contains("ANAK") || cat.contains("LIFESTYLE") || cat.contains("RUMAH") || cat.contains("DAPUR") || cat.contains("KESEHATAN") || cat.contains("PET") || cat.contains("HEWAN") || cat == "PCS" || name.contains("INDOMIE") || name.contains("MIE") || name.contains("MINYAK") || name.contains("SABUN") || name.contains("KOPI") || name.contains("SUSU") || name.contains("KECAP")) {
             return R.drawable.ic_pcs
         }
         return R.drawable.ic_nav_produk
+    }
+
+    fun getResolvedImagesDirectories(context: Context): List<File> {
+        val dirs = mutableListOf<File>()
+        val customPath = SessionManager.getInstance(context).getCustomImagesDir()
+        if (!customPath.isNullOrBlank()) {
+            val customDir = File(customPath)
+            if (customDir.exists() && customDir.isDirectory) {
+                dirs.add(customDir)
+            }
+        }
+        dirs.add(File(context.filesDir, "product_images"))
+        val extDir = Environment.getExternalStorageDirectory()
+        dirs.add(File(extDir, "Download/image"))
+        dirs.add(File(extDir, "Download/product_images"))
+        dirs.add(File(extDir, "product_images"))
+        dirs.add(File(extDir, "Pictures/image"))
+        dirs.add(File(extDir, "Pictures/product_images"))
+        dirs.add(File(extDir, "DCIM/image"))
+        context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.let { dirs.add(it) }
+        return dirs
     }
 
     fun findProductImageTarget(
@@ -59,48 +84,61 @@ object ImageUtils {
         barcode: String?,
         productId: String? = null
     ): Any? {
-        if (!imagePath.isNullOrBlank()) {
-            if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-                return imagePath
-            }
-            if (imagePath.startsWith("content://") || imagePath.startsWith("file://")) {
-                return Uri.parse(imagePath)
-            }
-            val file = File(imagePath)
-            if (file.isAbsolute && file.exists() && file.length() > 0) {
-                return file
-            }
-            val fileName = file.name
-            val internalFile = File(context.filesDir, "product_images/$fileName")
-            if (internalFile.exists() && internalFile.length() > 0) {
-                return internalFile
-            }
-            val sdFile = File("/sdcard/product_images/$fileName")
-            if (sdFile.exists() && sdFile.length() > 0) {
-                return sdFile
-            }
-        }
+        val searchDirs = getResolvedImagesDirectories(context)
 
+        // 1. Jika ada barcode, cari file offline lokal {barcode}.jpg / {barcode}.png terlebih dahulu
         if (!barcode.isNullOrBlank()) {
-            val cleanBarcode = barcode.trim()
-            val candidates = listOf(
-                File(context.filesDir, "product_images/$cleanBarcode.jpg"),
-                File(context.filesDir, "product_images/$cleanBarcode.png"),
-                File(context.filesDir, "product_images/$cleanBarcode.jpeg"),
-                File("/sdcard/product_images/$cleanBarcode.jpg"),
-                File("/sdcard/product_images/$cleanBarcode.png")
-            )
-            for (cand in candidates) {
-                if (cand.exists() && cand.length() > 0) {
-                    return cand
+            val cleanBc = barcode.trim()
+            val extensions = listOf(".jpg", ".png", ".jpeg", ".webp")
+            for (dir in searchDirs) {
+                if (!dir.exists() || !dir.isDirectory) continue
+                for (ext in extensions) {
+                    val cand = File(dir, "$cleanBc$ext")
+                    if (cand.exists() && cand.length() > 0) {
+                        return cand
+                    }
                 }
             }
         }
 
+        // 2. Jika imagePath adalah uri content:// atau file://
+        if (!imagePath.isNullOrBlank()) {
+            if (imagePath.startsWith("content://") || imagePath.startsWith("file://")) {
+                return Uri.parse(imagePath)
+            }
+
+            // Cek jika path lokal absolut langsung
+            val directFile = File(imagePath)
+            if (directFile.isAbsolute && directFile.exists() && directFile.length() > 0) {
+                return directFile
+            }
+
+            // Cek nama file lokal di dalam direktori pencarian
+            val fileName = directFile.name
+            if (fileName.isNotBlank() && fileName != "-") {
+                for (dir in searchDirs) {
+                    if (!dir.exists() || !dir.isDirectory) continue
+                    val cand = File(dir, fileName)
+                    if (cand.exists() && cand.length() > 0) {
+                        return cand
+                    }
+                }
+            }
+
+            // 3. Jika imagePath adalah URL internet
+            if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+                return imagePath
+            }
+        }
+
+        // 4. Cek ID Produk
         if (!productId.isNullOrBlank()) {
             val cleanId = productId.trim()
-            val cand = File(context.filesDir, "product_images/$cleanId.jpg")
-            if (cand.exists() && cand.length() > 0) return cand
+            for (dir in searchDirs) {
+                if (!dir.exists() || !dir.isDirectory) continue
+                val cand = File(dir, "$cleanId.jpg")
+                if (cand.exists() && cand.length() > 0) return cand
+            }
         }
 
         return null
@@ -311,5 +349,118 @@ object ImageUtils {
             Log.e(TAG, "Gagal membersihkan cache kamera: ${e.message}", e)
         }
         return freedBytes
+    }
+    fun resolveActiveImagesDirectory(context: Context): File {
+        val custom = SessionManager.getInstance(context).getCustomImagesDir()
+        if (!custom.isNullOrBlank()) {
+            val f1 = File(custom)
+            if (f1.exists() && f1.isDirectory) return f1
+            val norm = if (custom.startsWith("/sdcard")) {
+                custom.replace("/sdcard", Environment.getExternalStorageDirectory().absolutePath)
+            } else if (custom.startsWith(Environment.getExternalStorageDirectory().absolutePath)) {
+                custom.replace(Environment.getExternalStorageDirectory().absolutePath, "/sdcard")
+            } else {
+                custom
+            }
+            val f2 = File(norm)
+            if (f2.exists() && f2.isDirectory) return f2
+        }
+
+        val extDir = Environment.getExternalStorageDirectory()
+        val candidates = listOf(
+            File(extDir, "Download/image"),
+            File("/sdcard/Download/image"),
+            File(extDir, "product_images"),
+            File("/sdcard/product_images"),
+            File(extDir, "Download/product_images"),
+            File(context.filesDir, "product_images")
+        )
+        return candidates.firstOrNull { it.exists() && it.isDirectory } ?: candidates.first()
+    }
+
+    suspend fun syncImagesFromFolder(
+        context: Context,
+        folderPath: String? = null,
+        onProgress: ((current: Int, total: Int, matched: Int) -> Unit)? = null
+    ): Pair<Int, Int> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val targetFolder = if (!folderPath.isNullOrBlank()) {
+            val f1 = File(folderPath)
+            if (f1.exists() && f1.isDirectory) f1 else resolveActiveImagesDirectory(context)
+        } else {
+            resolveActiveImagesDirectory(context)
+        }
+
+        if (!targetFolder.exists() || !targetFolder.isDirectory) {
+            return@withContext Pair(0, 0)
+        }
+
+        val imageExtensions = setOf("jpg", "jpeg", "png", "webp")
+        val allFiles = targetFolder.listFiles { file ->
+            file.isFile && file.extension.lowercase(Locale.ROOT) in imageExtensions
+        }?.toList() ?: emptyList()
+
+        if (allFiles.isEmpty()) {
+            return@withContext Pair(0, 0)
+        }
+
+        val db = com.denkasir.data.local.AppDatabase.getDatabase(context)
+        val allProducts = db.productDao().getAllProductsList()
+        val productMapByBarcode = mutableMapOf<String, ProductEntity>()
+        for (p in allProducts) {
+            if (!p.barcode.isNullOrBlank()) {
+                productMapByBarcode[p.barcode.trim()] = p
+            }
+        }
+
+        var matchedCount = 0
+        val batchUpdates = mutableListOf<ProductEntity>()
+        val now = System.currentTimeMillis()
+
+        allFiles.forEachIndexed { index, file ->
+            val baseName = file.nameWithoutExtension.trim()
+            val product = productMapByBarcode[baseName]
+            if (product != null) {
+                val updated = product.copy(
+                    imagePath = file.absolutePath,
+                    updatedAt = now
+                )
+                batchUpdates.add(updated)
+                productMapByBarcode[baseName] = updated
+                matchedCount++
+            }
+            if (batchUpdates.size >= 250) {
+                db.productDao().insertProducts(batchUpdates)
+                batchUpdates.clear()
+            }
+            if ((index + 1) % 50 == 0 || index + 1 == allFiles.size) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onProgress?.invoke(index + 1, allFiles.size, matchedCount)
+                }
+            }
+        }
+
+        if (batchUpdates.isNotEmpty()) {
+            db.productDao().insertProducts(batchUpdates)
+            batchUpdates.clear()
+        }
+
+        Pair(matchedCount, allFiles.size)
+    }
+
+    fun getActiveImagesFolderSummary(context: Context): String {
+        val custom = SessionManager.getInstance(context).getCustomImagesDir()
+        val activeDir = resolveActiveImagesDirectory(context)
+
+        val imageExtensions = setOf("jpg", "jpeg", "png", "webp")
+        val count = if (activeDir.exists() && activeDir.isDirectory) {
+            activeDir.listFiles { file ->
+                file.isFile && file.extension.lowercase(Locale.ROOT) in imageExtensions
+            }?.size ?: 0
+        } else {
+            0
+        }
+
+        val label = if (!custom.isNullOrBlank()) "Folder Khusus: ${activeDir.absolutePath}" else "Folder Otomatis: ${activeDir.absolutePath}"
+        return "$label ($count foto offline)"
     }
 }
