@@ -97,6 +97,34 @@
             android:layout_marginTop="8dp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSendSmsCenter"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Kirim ke SMS Center Server Pulsa"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            app:icon="@drawable/ic_phone_contact"
+            app:iconTint="@android:color/white"
+            app:backgroundTint="#0284C7"
+            app:cornerRadius="12dp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnUpdateDigitalStatus"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Catat Respon Server (SN / Gangguan)"
+            android:textStyle="bold"
+            android:textColor="#3E24E2"
+            app:icon="@drawable/ic_edit"
+            app:iconTint="#3E24E2"
+            app:backgroundTint="@color/purple_button_light"
+            app:cornerRadius="12dp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnNewTransaction"
             android:layout_width="match_parent"
             android:layout_height="48dp"

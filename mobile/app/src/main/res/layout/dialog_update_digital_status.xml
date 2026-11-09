@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@android:color/white">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="14dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_nav_transaksi"
+            app:tint="#3E24E2" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Respon Server Pulsa &amp; PPOB"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDialogInvoiceNo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TRX-20261101-001"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Ringkasan Info Produk -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="#F8FAFC"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/tvDialogProductName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="[Pulsa Telkomsel] Pulsa 10.000"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/tvDialogTargetNumber"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Tujuan: 081234567890"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvDialogCurrentStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PROSES"
+                    android:textColor="#B45309"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_badge_pending"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Selector Status -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pilih Hasil Balasan dari Server Distributor:"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="6dp" />
+
+    <RadioGroup
+        android:id="@+id/rgStatusSelection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp">
+
+        <RadioButton
+            android:id="@+id/rbStatusSukses"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sukses Terkirim (Input Nomor SN / Token)"
+            android:textColor="#059669"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:checked="true" />
+
+        <RadioButton
+            android:id="@+id/rbStatusGangguan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Server Gangguan / Transaksi Gagal"
+            android:textColor="#DC2626"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+
+    </RadioGroup>
+
+    <!-- Container Form Sukses -->
+    <LinearLayout
+        android:id="@+id/layoutSuksesContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nomor Serial Number (SN) / Token PLN:"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilSnInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Contoh SN: 03120192837482"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etSnInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:inputType="text" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPasteSms"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:text="Tempel"
+                android:textColor="#3E24E2"
+                android:textSize="12sp"
+                app:backgroundTint="@color/purple_button_light"
+                app:cornerRadius="10dp"
+                android:layout_marginStart="8dp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="*SN akan otomatis tercantum pada struk Bluetooth &amp; WhatsApp sebagai bukti sah transaksi."
+            android:textColor="@color/text_muted"
+            android:textSize="11sp"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
+    <!-- Container Form Gangguan -->
+    <LinearLayout
+        android:id="@+id/layoutGangguanContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pilih Alasan Gangguan Server:"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp" />
+
+        <RadioGroup
+            android:id="@+id/rgAlasanGangguan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rbGangguanServer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Server Distributor Gangguan / Cut Off"
+                android:textSize="12sp"
+                android:checked="true" />
+
+            <RadioButton
+                android:id="@+id/rbNomorSalah"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Nomor Tujuan Salah / Hangus / Tidak Terdaftar"
+                android:textSize="12sp" />
+
+            <RadioButton
+                android:id="@+id/rbStokHabis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Stok / Nominal Kosong dari Provider Biller"
+                android:textSize="12sp" />
+
+        </RadioGroup>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E2E8F0"
+            android:layout_marginVertical="10dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Penyesuaian Buku Kas &amp; Saldo Toko:"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <CheckBox
+            android:id="@+id/cbRefundKas"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kembalikan Uang Kas (Refund Tunai ke Pelanggan)"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:checked="true" />
+
+        <CheckBox
+            android:id="@+id/cbRefundDeposit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kembalikan Saldo Deposit Server Pulsa"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:checked="true" />
+
+    </LinearLayout>
+
+    <!-- Tombol Aksi Bawah -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelUpdate"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="Batal"
+            android:textColor="@color/text_secondary"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_marginEnd="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="Simpan Status"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            app:backgroundTint="#3E24E2"
+            app:cornerRadius="10dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -33,7 +33,7 @@
             android:id="@+id/tvDialogTotalTagihan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Rp 43.500"
+            android:text="Rp 0"
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="@color/green_total" />
@@ -60,6 +60,12 @@
             android:layout_weight="1"
             android:text="QRIS" />
         <RadioButton
+            android:id="@+id/rbTransfer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Transfer" />
+        <RadioButton
             android:id="@+id/rbKasbon"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -67,7 +73,52 @@
             android:text="Kasbon" />
     </RadioGroup>
 
-    <!-- Input Uang Tunai Diterima -->
+    <!-- Input Khusus Kasbon: Nama & No. WhatsApp Pelanggan -->
+    <LinearLayout
+        android:id="@+id/layoutKasbonCustomerInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginTop="12dp">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilCustomerName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            android:hint="Nama Pelanggan (Wajib untuk Kasbon)">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCustomerName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPersonName"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilCustomerPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            android:hint="No. WhatsApp Pelanggan (Contoh: 0812xxx)">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etCustomerPhone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="phone"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+    </LinearLayout>
+
+    <!-- Input Uang Tunai Diterima (Khusus Pembayaran Tunai) -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/tilCashGiven"
         android:layout_width="match_parent"

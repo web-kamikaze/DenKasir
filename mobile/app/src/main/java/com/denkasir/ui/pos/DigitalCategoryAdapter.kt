@@ -14,6 +14,10 @@ class DigitalCategoryAdapter(
 
     private val items = mutableListOf<DigitalCategoryItem>()
 
+    constructor(initialItems: List<DigitalCategoryItem>, onCategoryClicked: (DigitalCategoryItem) -> Unit) : this(onCategoryClicked) {
+        items.addAll(initialItems)
+    }
+
     fun submitList(newItems: List<DigitalCategoryItem>) {
         items.clear()
         items.addAll(newItems)

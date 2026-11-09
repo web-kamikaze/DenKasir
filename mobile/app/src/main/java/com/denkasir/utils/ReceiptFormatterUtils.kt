@@ -303,9 +303,17 @@ object ReceiptFormatterUtils {
                 sb.append(threeColumns(item.productName, qtyStr, CurrencyUtils.formatNumberOnly(item.subtotal), width)).append("\n")
                 if (!item.targetPhoneNumber.isNullOrBlank()) {
                     sb.append("  Tujuan: ").append(item.targetPhoneNumber).append("\n")
+                    val statusText = when (item.digitalStatus.uppercase()) {
+                        "SUCCESS", "SUKSES" -> "SUKSES"
+                        "GANGGUAN", "GAGAL" -> "GANGGUAN"
+                        "PROSES", "PENDING" -> "PROSES"
+                        else -> item.digitalStatus
+                    }
+                    sb.append("  Status: ").append(statusText).append("\n")
                 }
                 if (!item.snNumber.isNullOrBlank()) {
-                    sb.append("  SN: ").append(item.snNumber).append("\n")
+                    val label = if (item.productName.contains("PLN", ignoreCase = true) || item.productName.contains("Token", ignoreCase = true)) "  Token : " else "  SN    : "
+                    sb.append(label).append(item.snNumber).append("\n")
                 }
             }
         } else {
@@ -316,9 +324,17 @@ object ReceiptFormatterUtils {
                 }
                 if (!item.targetPhoneNumber.isNullOrBlank()) {
                     sb.append("  No. HP: ").append(item.targetPhoneNumber).append("\n")
+                    val statusText = when (item.digitalStatus.uppercase()) {
+                        "SUCCESS", "SUKSES" -> "SUKSES"
+                        "GANGGUAN", "GAGAL" -> "GANGGUAN"
+                        "PROSES", "PENDING" -> "PROSES"
+                        else -> item.digitalStatus
+                    }
+                    sb.append("  Status: ").append(statusText).append("\n")
                 }
                 if (!item.snNumber.isNullOrBlank()) {
-                    sb.append("  SN: ").append(item.snNumber).append("\n")
+                    val label = if (item.productName.contains("PLN", ignoreCase = true) || item.productName.contains("Token", ignoreCase = true)) "  Token : " else "  SN    : "
+                    sb.append(label).append(item.snNumber).append("\n")
                 }
                 val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
                 val leftCol = "  " + qtyStr + " x " + CurrencyUtils.formatNumberOnly(item.sellingPrice)
@@ -435,9 +451,17 @@ object ReceiptFormatterUtils {
                 baos.write((threeColumns(item.productName, qtyStr, CurrencyUtils.formatNumberOnly(item.subtotal), width) + "\n").toByteArray(charset))
                 if (!item.targetPhoneNumber.isNullOrBlank()) {
                     baos.write(("  Tujuan: " + item.targetPhoneNumber + "\n").toByteArray(charset))
+                    val statusText = when (item.digitalStatus.uppercase()) {
+                        "SUCCESS", "SUKSES" -> "SUKSES"
+                        "GANGGUAN", "GAGAL" -> "GANGGUAN"
+                        "PROSES", "PENDING" -> "PROSES"
+                        else -> item.digitalStatus
+                    }
+                    baos.write(("  Status: " + statusText + "\n").toByteArray(charset))
                 }
                 if (!item.snNumber.isNullOrBlank()) {
-                    baos.write(("  SN: " + item.snNumber + "\n").toByteArray(charset))
+                    val label = if (item.productName.contains("PLN", ignoreCase = true) || item.productName.contains("Token", ignoreCase = true)) "  Token : " else "  SN    : "
+                    baos.write((label + item.snNumber + "\n").toByteArray(charset))
                 }
             }
         } else {
@@ -448,9 +472,17 @@ object ReceiptFormatterUtils {
                 }
                 if (!item.targetPhoneNumber.isNullOrBlank()) {
                     baos.write(("  No. HP: " + item.targetPhoneNumber + "\n").toByteArray(charset))
+                    val statusText = when (item.digitalStatus.uppercase()) {
+                        "SUCCESS", "SUKSES" -> "SUKSES"
+                        "GANGGUAN", "GAGAL" -> "GANGGUAN"
+                        "PROSES", "PENDING" -> "PROSES"
+                        else -> item.digitalStatus
+                    }
+                    baos.write(("  Status: " + statusText + "\n").toByteArray(charset))
                 }
                 if (!item.snNumber.isNullOrBlank()) {
-                    baos.write(("  SN: " + item.snNumber + "\n").toByteArray(charset))
+                    val label = if (item.productName.contains("PLN", ignoreCase = true) || item.productName.contains("Token", ignoreCase = true)) "  Token : " else "  SN    : "
+                    baos.write((label + item.snNumber + "\n").toByteArray(charset))
                 }
                 val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
                 val leftCol = "  " + qtyStr + " x " + CurrencyUtils.formatNumberOnly(item.sellingPrice)

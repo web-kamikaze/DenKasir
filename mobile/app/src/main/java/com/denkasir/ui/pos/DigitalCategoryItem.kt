@@ -12,7 +12,15 @@ data class NominalOption(
     val nominalValue: Double,
     val sellingPrice: Double,
     val costPrice: Double,
-    val isCustom: Boolean = false
+    val isCustom: Boolean = false,
+    val productEntity: com.denkasir.data.local.entity.ProductEntity? = null,
+    val quotaLabel: String = "",
+    val validityLabel: String = "",
+    val originalPrice: Double = 0.0,
+    val badgeText: String = "Muraaah",
+    val column1Title: String = "Kuota",
+    val column2Title: String = "Masa berlaku",
+    val isAvailable: Boolean = true
 )
 
 data class DigitalCategoryItem(
@@ -26,22 +34,23 @@ data class DigitalCategoryItem(
     val targetNumberHint: String = "081234567890",
     val operatorLabel: String = "Operator",
     val operators: List<String> = listOf("Telkomsel", "Indosat Ooredoo", "XL Axiata", "Tri (3)", "Smartfren", "Axis"),
-    val defaultNominals: List<NominalOption> = defaultPulseNominals()
+    val defaultNominals: List<NominalOption> = defaultPulseNominals(),
+    val isRegional: Boolean = false
 )
 
 fun defaultPulseNominals(): List<NominalOption> = listOf(
-    NominalOption("5.000", 5000.0, 7000.0, 5200.0),
-    NominalOption("10.000", 10000.0, 12000.0, 10200.0),
-    NominalOption("20.000", 20000.0, 22000.0, 20200.0),
-    NominalOption("50.000", 50000.0, 52000.0, 49800.0),
-    NominalOption("100.000", 100000.0, 102000.0, 98500.0),
-    NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
+    NominalOption("5.000", 5000.0, 7000.0, 5200.0, quotaLabel = "5.000", validityLabel = "15 hari", originalPrice = 10000.0, badgeText = "Muraaah", column1Title = "Pulsa"),
+    NominalOption("10.000", 10000.0, 12000.0, 10200.0, quotaLabel = "10.000", validityLabel = "30 hari", originalPrice = 15000.0, badgeText = "Muraaah", column1Title = "Pulsa"),
+    NominalOption("20.000", 20000.0, 22000.0, 20200.0, quotaLabel = "20.000", validityLabel = "30 hari", originalPrice = 25000.0, badgeText = "Muraaah", column1Title = "Pulsa"),
+    NominalOption("50.000", 50000.0, 52000.0, 49800.0, quotaLabel = "50.000", validityLabel = "30 hari", originalPrice = 55000.0, badgeText = "Muraaah", column1Title = "Pulsa"),
+    NominalOption("100.000", 100000.0, 102000.0, 98500.0, quotaLabel = "100.000", validityLabel = "60 hari", originalPrice = 108000.0, badgeText = "Muraaah", column1Title = "Pulsa"),
+    NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true, quotaLabel = "Bebas", validityLabel = "-", badgeText = "Manual", column1Title = "Pulsa")
 )
 
 object DigitalCatalog {
 
     fun getAllCategories(): List<DigitalCategoryItem> = listOf(
-        // ================= ISI ULANG (Image #1) =================
+        // ================= ISI ULANG (Sesuai Data Master & Scraper) =================
         DigitalCategoryItem(
             id = "pulsa",
             title = "Pulsa",
@@ -49,9 +58,9 @@ object DigitalCatalog {
             badgeText = "Promo",
             isPromoBadge = true,
             section = DigitalSection.ISI_ULANG,
-            targetNumberLabel = "Nomor Tujuan",
+            targetNumberLabel = "Nomor Ponsel Tujuan",
             targetNumberHint = "081234567890",
-            operators = listOf("Telkomsel", "Indosat Ooredoo", "XL Axiata", "Tri (3)", "Smartfren", "Axis")
+            operators = listOf("Telkomsel", "Indosat Ooredoo", "XL Axiata", "Tri (3)", "Smartfren", "Axis", "By.U")
         ),
         DigitalCategoryItem(
             id = "paket_data",
@@ -60,53 +69,118 @@ object DigitalCatalog {
             badgeText = "Promo",
             isPromoBadge = true,
             section = DigitalSection.ISI_ULANG,
-            targetNumberLabel = "Nomor Tujuan",
+            targetNumberLabel = "Nomor Ponsel Tujuan",
             targetNumberHint = "081234567890",
-            operators = listOf("Telkomsel Data", "Indosat Data Freedom", "XL Data Xtra", "Tri Data AON", "Smartfren Unlimited", "Axis Bronet"),
+            operators = listOf("Telkomsel Data", "Indosat Data", "XL Data", "Tri Data", "Smartfren Data", "Axis Data", "By.U Data"),
             defaultNominals = listOf(
-                NominalOption("1 GB / 30 Hari", 1000.0, 15000.0, 13000.0),
-                NominalOption("3 GB / 30 Hari", 3000.0, 25000.0, 23000.0),
-                NominalOption("5 GB / 30 Hari", 5000.0, 38000.0, 35000.0),
-                NominalOption("10 GB / 30 Hari", 10000.0, 58000.0, 55000.0),
-                NominalOption("25 GB / 30 Hari", 25000.0, 95000.0, 90000.0),
+                NominalOption("1 GB / 30 Hari", 1000.0, 15000.0, 13000.0, quotaLabel = "1 GB", validityLabel = "30 hari", originalPrice = 18000.0),
+                NominalOption("3 GB / 30 Hari", 3000.0, 25000.0, 23000.0, quotaLabel = "3 GB", validityLabel = "30 hari", originalPrice = 29000.0),
+                NominalOption("5 GB / 30 Hari", 5000.0, 38000.0, 35000.0, quotaLabel = "5 GB", validityLabel = "30 hari", originalPrice = 43000.0),
+                NominalOption("10 GB / 30 Hari", 10000.0, 58000.0, 55000.0, quotaLabel = "10 GB", validityLabel = "30 hari", originalPrice = 65000.0),
+                NominalOption("25 GB / 30 Hari", 25000.0, 95000.0, 90000.0, quotaLabel = "25 GB", validityLabel = "30 hari", originalPrice = 105000.0),
                 NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
+            )
+        ),
+        DigitalCategoryItem(
+            id = "paket_telp_sms",
+            title = "Paket Nelpon & SMS",
+            iconRes = R.drawable.ic_phone_contact,
+            badgeText = "Hemat",
+            isPromoBadge = true,
+            section = DigitalSection.ISI_ULANG,
+            targetNumberLabel = "Nomor Ponsel Tujuan",
+            targetNumberHint = "081234567890",
+            operators = listOf("Telkomsel Nelpon/SMS", "Indosat Nelpon/SMS", "XL Nelpon/SMS", "Tri Nelpon/SMS", "Axis Nelpon/SMS")
+        ),
+        DigitalCategoryItem(
+            id = "listrik_pln",
+            title = "Listrik PLN",
+            iconRes = R.drawable.ic_digital_listrik_pln,
+            badgeText = "Token",
+            isPromoBadge = false,
+            section = DigitalSection.ISI_ULANG,
+            targetNumberLabel = "No. Meter / ID Pelanggan",
+            targetNumberHint = "Contoh: 14123456789 atau 52123456789",
+            operatorLabel = "Jenis Layanan Listrik",
+            operators = listOf("Token PLN Prabayar", "Tagihan Listrik Pascabayar"),
+            defaultNominals = listOf(
+                NominalOption("20.000", 20000.0, 22500.0, 20250.0, quotaLabel = "20.000", validityLabel = "Selamanya", originalPrice = 25000.0, column1Title = "Token"),
+                NominalOption("50.000", 50000.0, 52500.0, 50250.0, quotaLabel = "50.000", validityLabel = "Selamanya", originalPrice = 56000.0, column1Title = "Token"),
+                NominalOption("100.000", 100000.0, 102500.0, 100250.0, quotaLabel = "100.000", validityLabel = "Selamanya", originalPrice = 107000.0, column1Title = "Token"),
+                NominalOption("200.000", 200000.0, 202500.0, 200250.0, quotaLabel = "200.000", validityLabel = "Selamanya", originalPrice = 208000.0, column1Title = "Token"),
+                NominalOption("500.000", 500000.0, 502500.0, 500250.0, quotaLabel = "500.000", validityLabel = "Selamanya", originalPrice = 510000.0, column1Title = "Token"),
+                NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true, quotaLabel = "Bebas", validityLabel = "Selamanya", column1Title = "Token")
             )
         ),
         DigitalCategoryItem(
             id = "uang_elektronik",
             title = "Uang Elektronik",
             iconRes = R.drawable.ic_digital_uang_elektronik,
-            badgeText = null,
+            badgeText = "E-Wallet",
+            isPromoBadge = false,
             section = DigitalSection.ISI_ULANG,
             targetNumberLabel = "Nomor Akun / HP E-Money",
             targetNumberHint = "081234567890",
             operatorLabel = "Penyedia E-Money",
-            operators = listOf("DANA", "GoPay Customer", "GoPay Driver", "OVO", "ShopeePay", "LinkAja", "Maxim Driver", "Grab Driver"),
+            operators = listOf("DANA", "GoPay Penumpang", "GoPay Driver", "OVO", "ShopeePay", "LinkAja", "Maxim Driver", "Grab Driver", "Mandiri e-Toll"),
             defaultNominals = listOf(
-                NominalOption("10.000", 10000.0, 12000.0, 10500.0),
-                NominalOption("20.000", 20000.0, 22000.0, 20500.0),
-                NominalOption("50.000", 50000.0, 52000.0, 50500.0),
-                NominalOption("100.000", 100000.0, 102000.0, 100500.0),
-                NominalOption("200.000", 200000.0, 202000.0, 200500.0),
+                NominalOption("10.000", 10000.0, 12000.0, 10500.0, quotaLabel = "10.000", validityLabel = "Selamanya", originalPrice = 14000.0, column1Title = "Saldo"),
+                NominalOption("20.000", 20000.0, 22000.0, 20500.0, quotaLabel = "20.000", validityLabel = "Selamanya", originalPrice = 24000.0, column1Title = "Saldo"),
+                NominalOption("50.000", 50000.0, 52000.0, 50500.0, quotaLabel = "50.000", validityLabel = "Selamanya", originalPrice = 55000.0, column1Title = "Saldo"),
+                NominalOption("100.000", 100000.0, 102000.0, 100500.0, quotaLabel = "100.000", validityLabel = "Selamanya", originalPrice = 106000.0, column1Title = "Saldo"),
+                NominalOption("200.000", 200000.0, 202000.0, 200500.0, quotaLabel = "200.000", validityLabel = "Selamanya", originalPrice = 207000.0, column1Title = "Saldo"),
                 NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
             )
+        ),
+        DigitalCategoryItem(
+            id = "voucher_game",
+            title = "Voucher Game",
+            iconRes = R.drawable.ic_gamepad,
+            badgeText = "Populer",
+            isPromoBadge = true,
+            section = DigitalSection.ISI_ULANG,
+            targetNumberLabel = "User ID Game",
+            targetNumberHint = "Contoh: 12345678 (Zone 2001)",
+            operatorLabel = "Pilih Game",
+            operators = listOf("Mobile Legends", "Free Fire", "PUBG Mobile", "Genshin Impact", "Roblox", "Steam Wallet", "Gemscool", "Higgs Domino", "Call of Duty Mobile")
+        ),
+        DigitalCategoryItem(
+            id = "masa_aktif",
+            title = "Masa Aktif",
+            iconRes = R.drawable.ic_history,
+            section = DigitalSection.ISI_ULANG,
+            targetNumberLabel = "Nomor Ponsel Tujuan",
+            targetNumberHint = "081234567890",
+            operators = listOf("Three (Tri)", "Telkomsel", "Indosat", "XL", "Axis")
+        ),
+        DigitalCategoryItem(
+            id = "aktivasi_perdana",
+            title = "Aktivasi Perdana",
+            iconRes = R.drawable.ic_barcode,
+            section = DigitalSection.ISI_ULANG,
+            targetNumberLabel = "Nomor Seri / Barcode Fisik",
+            targetNumberHint = "Scan / input nomor seri fisik",
+            operatorLabel = "Operator / Voucher",
+            operators = listOf("Three", "Axis", "Telkomsel", "Indosat", "Smartfren", "XL")
+        ),
+        DigitalCategoryItem(
+            id = "voucher_belanja",
+            title = "Voucher Belanja",
+            iconRes = R.drawable.ic_spreadsheet_file,
+            section = DigitalSection.ISI_ULANG,
+            targetNumberLabel = "Nomor HP Penerima Voucher",
+            targetNumberHint = "081234567890",
+            operatorLabel = "Penyedia Voucher",
+            operators = listOf("Indomaret", "Alfamart", "Transmart")
         ),
         DigitalCategoryItem(
             id = "roaming",
             title = "Roaming",
             iconRes = R.drawable.ic_digital_roaming,
-            badgeText = null,
             section = DigitalSection.ISI_ULANG,
             targetNumberLabel = "Nomor HP Roaming",
             targetNumberHint = "081234567890",
-            operators = listOf("Telkomsel RoaMAX", "Indosat PassPord", "XL Pass Luar Negeri", "Tri Roaming Pass"),
-            defaultNominals = listOf(
-                NominalOption("Singapura/Malaysia 3 Hari", 3000.0, 50000.0, 47000.0),
-                NominalOption("Asia Pasifik 7 Hari", 7000.0, 120000.0, 115000.0),
-                NominalOption("Umroh / Haji 12 Hari", 12000.0, 275000.0, 265000.0),
-                NominalOption("Global Worldwide 30 Hari", 30000.0, 390000.0, 375000.0),
-                NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
-            )
+            operators = listOf("Telkomsel RoaMAX", "Indosat PassPord", "XL Pass Luar Negeri", "Tri Roaming Pass")
         ),
         DigitalCategoryItem(
             id = "travel_esim",
@@ -118,14 +192,7 @@ object DigitalCatalog {
             targetNumberLabel = "Email / No HP Pembeli",
             targetNumberHint = "081234567890",
             operatorLabel = "Negara Tujuan",
-            operators = listOf("Japan & Korea eSIM", "Singapore & Malaysia eSIM", "Europe 33 Countries eSIM", "USA & Canada eSIM", "Global eSIM"),
-            defaultNominals = listOf(
-                NominalOption("5 GB / 7 Hari", 5000.0, 85000.0, 78000.0),
-                NominalOption("10 GB / 15 Hari", 10000.0, 145000.0, 135000.0),
-                NominalOption("20 GB / 30 Hari", 20000.0, 225000.0, 210000.0),
-                NominalOption("Unlimited 7 Hari", 70000.0, 120000.0, 110000.0),
-                NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
-            )
+            operators = listOf("Japan & Korea eSIM", "Singapore & Malaysia eSIM", "Europe 33 Countries eSIM", "USA & Canada eSIM", "Global eSIM")
         ),
         DigitalCategoryItem(
             id = "esim_lokal",
@@ -136,117 +203,90 @@ object DigitalCatalog {
             section = DigitalSection.ISI_ULANG,
             targetNumberLabel = "Nomor KTP / NIK & No HP",
             targetNumberHint = "081234567890",
-            operators = listOf("Smartfren eSIM", "XL Axiata eSIM", "Indosat IM3 eSIM", "Telkomsel eSIM"),
-            defaultNominals = listOf(
-                NominalOption("Starter 15 GB / 30 Hari", 15000.0, 45000.0, 40000.0),
-                NominalOption("Freedom 30 GB / 30 Hari", 30000.0, 75000.0, 70000.0),
-                NominalOption("Unlimited Nonstop 30 Hari", 50000.0, 95000.0, 88000.0),
-                NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
-            )
+            operators = listOf("Smartfren eSIM", "XL Axiata eSIM", "Indosat IM3 eSIM", "Telkomsel eSIM")
         ),
 
-        // ================= TAGIHAN (Image #1) =================
+        // ================= TAGIHAN (Sesuai Data Master & Format Wilayah) =================
         DigitalCategoryItem(
-            id = "listrik_pln",
-            title = "Listrik PLN",
-            iconRes = R.drawable.ic_digital_listrik_pln,
+            id = "pdam",
+            title = "PDAM",
+            iconRes = R.drawable.ic_digital_pdam,
+            badgeText = "Resmi",
+            isPromoBadge = false,
+            section = DigitalSection.TAGIHAN,
+            targetNumberLabel = "Nomor Pelanggan PDAM",
+            targetNumberHint = "Masukkan ID Pelanggan PDAM (contoh: 0102030405)",
+            operatorLabel = "Pilih Provinsi / Wilayah",
+            operators = listOf("Jawa Barat", "Jawa Tengah", "Jawa Timur", "Jabodetabek", "Sumatera", "Sulawesi", "Kalimantan", "Bali", "Nusa Tenggara", "Kepri, Jambi, Bengkulu", "Maluku dan Papua"),
+            isRegional = true
+        ),
+        DigitalCategoryItem(
+            id = "bpjs",
+            title = "BPJS",
+            iconRes = R.drawable.ic_digital_premi_asuransi,
+            badgeText = "Resmi",
+            isPromoBadge = false,
+            section = DigitalSection.TAGIHAN,
+            targetNumberLabel = "Nomor Peserta BPJS",
+            targetNumberHint = "13 digit nomor kartu BPJS",
+            operatorLabel = "Jenis Layanan BPJS",
+            operators = listOf("BPJS Kesehatan", "BPJS Ketenagakerjaan")
+        ),
+        DigitalCategoryItem(
+            id = "tagihan",
+            title = "Tagihan Lainnya",
+            iconRes = R.drawable.ic_cash_register,
             badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Meter / ID Pelanggan",
-            targetNumberHint = "Contoh: 14123456789",
-            operatorLabel = "Jenis Layanan PLN",
-            operators = listOf("PLN Prabayar (Token)", "PLN Pascabayar (Tagihan Bulanan)", "PLN Non Taglis"),
-            defaultNominals = listOf(
-                NominalOption("20.000", 20000.0, 22500.0, 20250.0),
-                NominalOption("50.000", 50000.0, 52500.0, 50250.0),
-                NominalOption("100.000", 100000.0, 102500.0, 100250.0),
-                NominalOption("200.000", 200000.0, 202500.0, 200250.0),
-                NominalOption("500.000", 500000.0, 502500.0, 500250.0),
-                NominalOption("Lainnya", 0.0, 0.0, 0.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Tagihan / ID Pelanggan",
+            targetNumberHint = "Nomor kontrak / ID pelanggan",
+            operatorLabel = "Penyedia Tagihan",
+            operators = listOf("Telkom / IndiHome", "XL/Axis Cuanku", "Multifinance / Angsuran", "TV Berlangganan")
         ),
         DigitalCategoryItem(
             id = "telkom",
-            title = "Telkom",
+            title = "Telkom & IndiHome",
             iconRes = R.drawable.ic_digital_telkom,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Telepon / ID IndiHome",
-            targetNumberHint = "Contoh: 0218765432 / 1234567890",
-            operatorLabel = "Layanan Telkom",
-            operators = listOf("Telkom IndiHome", "Telepon Rumah PSTN"),
-            defaultNominals = listOf(
-                NominalOption("Cek & Bayar Tagihan", 0.0, 3000.0, 1000.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Telepon / Internet",
+            targetNumberHint = "02112345678",
+            operators = listOf("Telkom PSTN", "IndiHome", "Speedy")
         ),
         DigitalCategoryItem(
             id = "pasca_bayar",
             title = "Pasca Bayar",
             iconRes = R.drawable.ic_digital_pasca_bayar,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
             targetNumberLabel = "Nomor HP Pasca Bayar",
-            targetNumberHint = "08112345678",
-            operators = listOf("Telkomsel Halo", "Indosat Postpaid (Matrix)", "XL Prioritas", "Smartfren Postpaid", "Tri Postpaid"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Tagihan Bulanan", 0.0, 3000.0, 1000.0, isCustom = true)
-            )
-        ),
-        DigitalCategoryItem(
-            id = "pdam",
-            title = "PDAM",
-            iconRes = R.drawable.ic_digital_pdam,
-            badgeText = null,
-            section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Pelanggan Air PDAM",
-            targetNumberHint = "Contoh: 0102030405",
-            operatorLabel = "Wilayah PDAM",
-            operators = listOf("PDAM DKI Jakarta PAM JAYA", "PDAM Tirta Moedal Semarang", "PDAM Surabaya Surya Sembada", "PDAM Kota Bandung Tirtawening", "PDAM Kab Bogor Tirta Kahuripan", "PDAM Wilayah Lainnya"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Tagihan Air", 0.0, 3500.0, 1500.0, isCustom = true)
-            )
+            targetNumberHint = "081234567890",
+            operators = listOf("Kartu Halo", "Matrix Ooredoo", "XL Prioritas", "Smartfren Postpaid")
         ),
         DigitalCategoryItem(
             id = "tv_internet",
             title = "TV Kabel & Internet",
             iconRes = R.drawable.ic_digital_tv_internet,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Pelanggan TV / Internet",
-            targetNumberHint = "Contoh: 1002345678",
-            operatorLabel = "Penyedia Internet / TV",
-            operators = listOf("IndiHome", "First Media", "MyRepublic", "Biznet Home", "MNC Vision / Play", "Transvision", "K-Vision"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Tagihan Bulanan", 0.0, 3500.0, 1500.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Pelanggan TV",
+            targetNumberHint = "1012345678",
+            operators = listOf("Indovision / MNC Vision", "Transvision", "First Media", "MyRepublic", "Biznet Home")
         ),
         DigitalCategoryItem(
             id = "angsuran_kredit",
             title = "Angsuran Kredit",
             iconRes = R.drawable.ic_digital_angsuran_kredit,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Kontrak Cicilan",
-            targetNumberHint = "Contoh: 2021008899",
-            operatorLabel = "Perusahaan Leasing / Multifinance",
-            operators = listOf("FIFGROUP", "BAF (Bussan Auto Finance)", "Adira Finance", "WOM Finance", "Mega Auto Finance", "OTO Kredit Motor/Mobil", "Home Credit", "Kredit Plus"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Cicilan Angsuran", 0.0, 4000.0, 1500.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Kontrak Kredit",
+            targetNumberHint = "Contoh: 0123456789",
+            operators = listOf("FIF Group", "WOM Finance", "BAF", "Adira Finance", "Mega Finance", "Home Credit")
         ),
         DigitalCategoryItem(
             id = "kartu_kredit",
             title = "Kartu Kredit",
             iconRes = R.drawable.ic_digital_kartu_kredit,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "16 Digit Nomor Kartu Kredit",
-            targetNumberHint = "Contoh: 4111222233334444",
-            operatorLabel = "Bank Penerbit Kartu",
-            operators = listOf("BCA Credit Card", "Mandiri Kartu Kredit", "BRI Card", "BNI Credit Card", "CIMB Niaga Card", "Bank Mega Card", "Permata Bank Card"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Tagihan Kartu Kredit", 0.0, 7500.0, 5000.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Kartu Kredit",
+            targetNumberHint = "16 digit nomor kartu",
+            operators = listOf("BCA", "Mandiri", "BNI", "BRI", "CIMB Niaga", "Bank Mega")
         ),
         DigitalCategoryItem(
             id = "biaya_pendidikan",
@@ -255,69 +295,45 @@ object DigitalCatalog {
             badgeText = "Promo",
             isPromoBadge = true,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Induk Siswa / Mahasiswa / Kode Bayar",
-            targetNumberHint = "Contoh: 2023019900",
-            operatorLabel = "Institusi Pendidikan",
-            operators = listOf("Universitas Terbuka (UT)", "SPP Sekolah & Yayasan", "Universitas Gadjah Mada (UGM)", "Universitas Indonesia (UI)", "Institusi Bimbel & Kursus"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Uang Kuliah / SPP", 0.0, 3000.0, 1000.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Pembayaran Mahasiswa",
+            targetNumberHint = "Nomor induk mahasiswa / SPP",
+            operators = listOf("Universitas Terbuka", "SPP Sekolah", "Bimbel Ruangguru")
         ),
         DigitalCategoryItem(
             id = "pgn",
-            title = "PGN",
+            title = "PGN Gas",
             iconRes = R.drawable.ic_digital_pgn,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Pelanggan Gas PGN",
-            targetNumberHint = "Contoh: 1000123456",
-            operatorLabel = "Penyedia Gas",
-            operators = listOf("PGN (Perusahaan Gas Negara)", "Pertagas Niaga"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Tagihan Gas PGN", 0.0, 3000.0, 1000.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Pelanggan Gas",
+            targetNumberHint = "Nomor ID pelanggan PGN",
+            operators = listOf("PGN Pelanggan Rumah Tangga", "PGN Bisnis")
         ),
         DigitalCategoryItem(
             id = "ipl",
-            title = "IPL",
+            title = "IPL & Lingkungan",
             iconRes = R.drawable.ic_digital_ipl,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Unit / Rumah / ID Penghuni",
-            targetNumberHint = "Contoh: TOWER-A-1205",
-            operatorLabel = "Pengelola Kawasan / Properti",
-            operators = listOf("IPL Apartemen & Real Estate", "Iuran Pengelolaan Lingkungan Perumahan", "Iuran Keamanan & Kebersihan RW"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Iuran Pengelolaan Lingkungan", 0.0, 2500.0, 1000.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Unit / Rumah",
+            targetNumberHint = "Blok / Nomor rumah",
+            operators = listOf("Iuran Pengelolaan Lingkungan Apartemen", "Iuran Komplek Perumahan")
         ),
         DigitalCategoryItem(
             id = "e_invoicing",
-            title = "E-Invoicing",
+            title = "E-Invoicing Pajak",
             iconRes = R.drawable.ic_digital_e_invoicing,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Kode Billing / ID Transaksi",
-            targetNumberHint = "Contoh: 012345678901234",
-            operatorLabel = "Jenis E-Billing",
-            operators = listOf("E-Billing Pajak DJP", "Penerimaan Negara Bukan Pajak (PNBP)", "Bea Cukai Cukai & Impor", "SAMSAT Pajak Kendaraan"),
-            defaultNominals = listOf(
-                NominalOption("Bayar E-Billing Resmi", 0.0, 3500.0, 1500.0, isCustom = true)
-            )
+            targetNumberLabel = "Kode Billing Pajak",
+            targetNumberHint = "15 digit kode e-billing",
+            operators = listOf("Pajak DJP Online", "PBB Daerah", "SAMSAT PKB")
         ),
         DigitalCategoryItem(
             id = "premi_asuransi",
             title = "Premi Asuransi",
             iconRes = R.drawable.ic_digital_premi_asuransi,
-            badgeText = null,
             section = DigitalSection.TAGIHAN,
-            targetNumberLabel = "Nomor Polis / Nomor VA Asuransi",
-            targetNumberHint = "Contoh: 0001234567890",
-            operatorLabel = "Perusahaan Asuransi / Jaminan",
-            operators = listOf("BPJS Kesehatan", "BPJS Ketenagakerjaan", "Prudential Life Assurance", "Allianz Indonesia", "AXA Mandiri Financial", "AIA Financial", "Manulife Indonesia"),
-            defaultNominals = listOf(
-                NominalOption("Bayar Iuran / Premi Asuransi", 0.0, 3000.0, 1000.0, isCustom = true)
-            )
+            targetNumberLabel = "Nomor Polis Asuransi",
+            targetNumberHint = "Nomor polis asuransi terdaftar",
+            operators = listOf("Prudential", "Allianz", "AXA Mandiri", "Manulife", "Generali")
         )
     )
 }

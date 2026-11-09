@@ -31,8 +31,7 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     private val debtDao = db.debtDao()
     private val digitalDao = db.digitalConfigDao()
 
-    private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
-    val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
+    val cartItems: StateFlow<List<CartItem>> = CartManager.cartItems
 
     private val _selectedCategory = MutableStateFlow("Scan")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
@@ -41,7 +40,6 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         // Keranjang kasir mulai bersih (kosong) saat aplikasi baru dijalankan
-        _cartItems.value = emptyList()
     }
 
     fun setCategory(category: String) {
@@ -49,46 +47,27 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addToCart(product: ProductEntity, qty: Double = 1.0, phone: String? = null) {
-        val current = _cartItems.value.toMutableList()
-        val existingIndex = current.indexOfFirst { it.product.id == product.id && it.targetPhone == phone }
-        if (existingIndex >= 0) {
-            val item = current[existingIndex]
-            current[existingIndex] = item.copy(quantity = item.quantity + qty)
-        } else {
-            current.add(CartItem(product = product, quantity = qty, targetPhone = phone))
-        }
-        _cartItems.value = current
+        CartManager.addToCart(product, qty, phone)
     }
 
     fun updateQuantity(cartItem: CartItem, newQty: Double) {
-        val current = _cartItems.value.toMutableList()
-        val index = current.indexOfFirst { it.product.id == cartItem.product.id && it.targetPhone == cartItem.targetPhone }
-        if (index >= 0) {
-            if (newQty > 0) {
-                current[index] = cartItem.copy(quantity = newQty)
-            } else {
-                current.removeAt(index)
-            }
-            _cartItems.value = current
-        }
+        CartManager.updateQuantity(cartItem, newQty)
     }
 
     fun removeItem(cartItem: CartItem) {
-        val current = _cartItems.value.toMutableList()
-        current.removeAll { it.product.id == cartItem.product.id && it.targetPhone == cartItem.targetPhone }
-        _cartItems.value = current
+        CartManager.removeItem(cartItem)
     }
 
     fun clearCart() {
-        _cartItems.value = emptyList()
+        CartManager.clearCart()
     }
 
     fun getTotalItemCount(): Double {
-        return _cartItems.value.sumOf { it.quantity }
+        return CartManager.getTotalItemCount()
     }
 
     fun getTotalBayar(): Double {
-        return _cartItems.value.sumOf { it.subtotal }
+        return CartManager.getTotalBayar()
     }
 
     fun addScannedBarcode(barcode: String, qty: Double = 1.0, onResult: (Boolean, String) -> Unit) {
@@ -110,10 +89,11 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
         paymentMethod: String,
         cashGiven: Double,
         customerName: String?,
+        customerPhone: String? = null,
         onSuccess: (TransactionEntity, String) -> Unit
     ) {
         viewModelScope.launch {
-            val currentCart = _cartItems.value
+            val currentCart = CartManager.cartItems.value
             if (currentCart.isEmpty()) return@launch
 
             val totalAmount = getTotalBayar()
@@ -126,6 +106,8 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
             val currentUserId = session.getCurrentUserId()
             val currentCashierName = session.getCurrentFullName()
 
+            val hasDigital = currentCart.any { it.product.productType == "DIGITAL" }
+
             val transaction = TransactionEntity(
                 id = trxId,
                 userId = currentUserId,
@@ -135,13 +117,13 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
                 cashGiven = cashGiven,
                 changeAmount = change,
                 paymentMethod = paymentMethod,
-                customerName = customerName
+                customerName = customerName,
+                status = if (hasDigital) "PROSES" else "COMPLETED"
             )
 
             val trxItems = currentCart.map { item ->
-                val sn = if (item.product.productType == "DIGITAL") {
-                    "SN${System.currentTimeMillis().toString().takeLast(10)}"
-                } else null
+                val isDigital = item.product.productType == "DIGITAL"
+                val initialStatus = if (isDigital) "PROSES" else "SUCCESS"
 
                 TransactionItemEntity(
                     transactionId = trxId,
@@ -152,7 +134,8 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
                     sellingPrice = item.product.sellingPrice,
                     subtotal = item.subtotal,
                     targetPhoneNumber = item.targetPhone,
-                    snNumber = sn
+                    snNumber = null,
+                    digitalStatus = initialStatus
                 )
             }
 
@@ -172,23 +155,28 @@ class PosViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 // 3. Jurnal BKU (Kas Masuk Penjualan)
-                cashFlowDao.insertCashFlow(
-                    CashFlowEntity(
-                        flowType = "IN",
-                        category = "PENJUALAN",
-                        amount = totalAmount,
-                        description = "Penjualan Kasir No. $invoiceNo (${paymentMethod})",
-                        referenceId = trxId
+                // HANYA untuk CASH, QRIS, TRANSFER karena uang sudah lunas diterima
+                if (paymentMethod in listOf("CASH", "QRIS", "TRANSFER")) {
+                    cashFlowDao.insertCashFlow(
+                        CashFlowEntity(
+                            flowType = "IN",
+                            category = "PENJUALAN",
+                            amount = totalAmount,
+                            description = "Penjualan Kasir No. $invoiceNo ($paymentMethod)",
+                            referenceId = trxId
+                        )
                     )
-                )
-
-                // 4. If Kasbon / Hutang
-                if (paymentMethod == "KASBON") {
+                } else if (paymentMethod == "KASBON") {
+                    // 4. Piutang Kasbon: Uang fisik belum diterima di kas toko,
+                    // JANGAN catat kas masuk di BKU untuk mencegah dobel hitung saat dilunasi nanti.
                     debtDao.insertDebt(
                         DebtEntity(
-                            customerName = customerName ?: "Pelanggan Warung",
+                            customerName = customerName?.ifBlank { "Pelanggan Kasbon" } ?: "Pelanggan Kasbon",
+                            customerPhone = customerPhone,
                             totalDebt = totalAmount,
-                            paidAmount = 0.0
+                            paidAmount = 0.0,
+                            status = "UNPAID",
+                            debtType = "PIUTANG"
                         )
                     )
                 }

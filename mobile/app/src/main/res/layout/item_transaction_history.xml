@@ -41,6 +41,20 @@
                 android:layout_marginStart="8dp" />
 
             <TextView
+                android:id="@+id/badgeDigitalStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PROSES"
+                android:textColor="#B45309"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_badge_pending"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone" />
+
+            <TextView
                 android:id="@+id/badgePaymentMethod"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

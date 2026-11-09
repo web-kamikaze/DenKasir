@@ -1,4 +1,4 @@
-﻿package com.denkasir
+package com.denkasir
 
 import com.denkasir.data.local.entity.ProductEntity
 import org.junit.Assert.*

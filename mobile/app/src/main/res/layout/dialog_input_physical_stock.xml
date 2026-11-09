@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@android:color/white">
+
+    <!-- Header Nama Produk -->
+    <TextView
+        android:id="@+id/tvDlgProductName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nama Produk"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvDlgCategoryBarcode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Kategori: Umum • Barcode: -"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        android:layout_marginTop="2dp" />
+
+    <!-- Info Banner (Role / System Stock) -->
+    <LinearLayout
+        android:id="@+id/layoutSystemStockBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#EFF6FF"
+        android:padding="10dp"
+        android:layout_marginTop="12dp">
+
+        <TextView
+            android:id="@+id/tvDlgStockInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Stok Sistem: 15 unit"
+            android:textColor="#1D4ED8"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Input Section: Stok Fisik Riil -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Jumlah Stok Fisik Riil di Rak"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginTop="14dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMinusQty"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:text="-"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:cornerRadius="10dp" />
+
+        <EditText
+            android:id="@+id/etPhysicalStockInput"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/bg_input_box"
+            android:gravity="center"
+            android:hint="0"
+            android:inputType="number"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPlusQty"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:text="+"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:cornerRadius="10dp" />
+
+    </LinearLayout>
+
+    <!-- Tombol Cepat: +5, +10, Cocokkan -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:id="@+id/btnQuickPlus5"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:text="+5 unit"
+            android:textSize="11sp"
+            android:textColor="#3E24E2"
+            android:background="@drawable/bg_chip_unselected"
+            android:paddingHorizontal="10dp"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/btnQuickPlus10"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:text="+10 unit"
+            android:textSize="11sp"
+            android:textColor="#3E24E2"
+            android:background="@drawable/bg_chip_unselected"
+            android:paddingHorizontal="10dp"
+            android:layout_marginEnd="6dp" />
+
+        <TextView
+            android:id="@+id/btnQuickMatchSystem"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:gravity="center"
+            android:text="✓ Samakan Sistem"
+            android:textSize="11sp"
+            android:textColor="#059669"
+            android:background="@drawable/bg_chip_unselected"
+            android:paddingHorizontal="10dp" />
+
+    </LinearLayout>
+
+    <!-- Pilihan Alasan Selisih -->
+    <TextView
+        android:id="@+id/tvLabelAlasan"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Alasan Selisih / Keterangan"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_marginTop="14dp" />
+
+    <Spinner
+        android:id="@+id/spReasonOpname"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input_box"
+        android:paddingHorizontal="12dp" />
+
+    <EditText
+        android:id="@+id/etCustomNoteOpname"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input_box"
+        android:hint="Catatan tambahan (opsional)..."
+        android:paddingHorizontal="12dp"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"
+        android:singleLine="true" />
+
+    <!-- Action Buttons: Batal & Simpan -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="18dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancelDlg"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:text="Batal"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:layout_marginEnd="8dp"
+            app:cornerRadius="10dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveDlg"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:text="Simpan Hasil"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            app:backgroundTint="#3E24E2"
+            app:cornerRadius="10dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

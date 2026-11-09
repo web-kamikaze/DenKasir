@@ -91,6 +91,11 @@ class DataManagementActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!SessionManager.getInstance(this).isOwner()) {
+            Toast.makeText(this, "Akses ditolak: Hanya akun OWNER yang berhak mengakses Pengelolaan Data!", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         binding = ActivityDataManagementBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

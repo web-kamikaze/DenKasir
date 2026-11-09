@@ -1,4 +1,4 @@
-﻿package com.denkasir
+package com.denkasir
 
 import com.denkasir.data.local.entity.BkuAccountEntity
 import com.denkasir.data.local.entity.CashFlowEntity

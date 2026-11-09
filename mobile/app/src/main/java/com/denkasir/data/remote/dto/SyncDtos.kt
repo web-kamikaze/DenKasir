@@ -144,3 +144,76 @@ data class SyncPullResponseDto(
     @SerializedName("stock_opnames") val stockOpnames: List<StockOpnameSyncDto> = emptyList(),
     @SerializedName("purchase_orders") val purchaseOrders: List<PurchaseOrderSyncDto> = emptyList()
 )
+
+
+// ==========================================
+// DTO KATALOG PRODUK DIGITAL API (st.riungan.my.id)
+// ==========================================
+data class DigitalCatalogApiItemDto(
+    val id: String,
+    @SerializedName("voucher_id") val voucherId: Int = 0,
+    @SerializedName("provider_code") val providerCode: String? = null,
+    val name: String,
+    @SerializedName("nominal_label") val nominalLabel: String? = null,
+    @SerializedName("operator_name") val operatorName: String? = null,
+    val category: String = "Pulsa",
+    @SerializedName("category_id") val categoryId: String? = null,
+    @SerializedName("product_type") val productType: String = "DIGITAL",
+    @SerializedName("cost_price") val costPrice: Double = 0.0,
+    @SerializedName("selling_price") val sellingPrice: Double = 0.0,
+    @SerializedName("recommended_selling_price") val recommendedSellingPrice: Double = 0.0,
+    val stock: Double = 999.0,
+    @SerializedName("is_gangguan") val isGangguan: Boolean = false,
+    @SerializedName("status_label") val statusLabel: String? = null,
+    val description: String? = null
+)
+
+data class DigitalCatalogApiResponseDto(
+    val status: String,
+    @SerializedName("up_to_date") val upToDate: Boolean = false,
+    @SerializedName("last_updated_at") val lastUpdatedAt: String? = null,
+    @SerializedName("expires_at") val expiresAt: String? = null,
+    @SerializedName("is_expired") val isExpired: Boolean = false,
+    @SerializedName("total_items") val totalItems: Int = 0,
+    @SerializedName("total_normal") val totalNormal: Int = 0,
+    @SerializedName("total_gangguan") val totalGangguan: Int = 0,
+    val items: List<DigitalCatalogApiItemDto> = emptyList()
+)
+
+data class DigitalCatalogSyncSummary(
+    val upToDate: Boolean,
+    val totalItems: Int,
+    val normalCount: Int,
+    val gangguanCount: Int,
+    val lastUpdatedAt: String?,
+    val expiresAt: String?
+)
+
+// ==========================================
+// DTO TRANSAKSI H2H GATEWAY
+// ==========================================
+data class H2hOrderRequestDto(
+    @SerializedName("product_code") val productCode: String,
+    @SerializedName("target_number") val targetNumber: String,
+    @SerializedName("id_plgn") val idPlgn: String? = null,
+    @SerializedName("client_trx_id") val clientTrxId: String? = null,
+    @SerializedName("pin") val pin: String? = null,
+    @SerializedName("sms_center") val smsCenter: String? = null,
+    @SerializedName("api_key") val apiKey: String? = null
+)
+
+data class H2hOrderResponseDto(
+    val status: String,
+    val message: String,
+    @SerializedName("trx_id") val trxId: String? = null,
+    @SerializedName("product_code") val productCode: String? = null,
+    @SerializedName("voucher_id") val voucherId: Int = 0,
+    @SerializedName("product_name") val productName: String? = null,
+    @SerializedName("target_number") val targetNumber: String? = null,
+    @SerializedName("sn_number") val snNumber: String? = null,
+    @SerializedName("sms_command") val smsCommand: String? = null,
+    @SerializedName("sms_center") val smsCenter: String? = null,
+    val price: Double = 0.0,
+    val channel: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)

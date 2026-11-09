@@ -140,6 +140,15 @@ class ProductsFragment : Fragment() {
             showTopUpDepositDialog()
         }
 
+        binding.btnSyncDigitalCatalog.setOnClickListener {
+            syncDigitalCatalogManual()
+        }
+
+        // Auto-sync katalog digital API (st.riungan.my.id) jika belum ada / siklus 24 jam lewat
+        viewLifecycleOwner.lifecycleScope.launch {
+            com.denkasir.data.repository.SyncRepository(requireContext()).syncDigitalCatalogIfNeeded()
+        }
+
         // 1. Observe Retail Products
         viewLifecycleOwner.lifecycleScope.launch {
             productDao.getRetailProducts().collectLatest { products ->
@@ -153,10 +162,15 @@ class ProductsFragment : Fragment() {
             }
         }
 
-        // 2. Observe Digital Products (Token PLN, Pulsa, dll)
+        // 2. Observe Digital Products (Token PLN, Pulsa, dll dari API st.riungan.my.id)
         viewLifecycleOwner.lifecycleScope.launch {
             productDao.getDigitalProducts().collectLatest { digitalProducts ->
                 allDigitalProducts = digitalProducts
+                binding.tvDepositProviderStatus.text = if (digitalProducts.isNotEmpty()) {
+                    "Katalog Layanan Digital ? ${digitalProducts.size} Produk Tersedia"
+                } else {
+                    "Katalog Layanan Digital ? Klik 'Update Katalog'"
+                }
                 withContext(Dispatchers.Default) {
                     SmartSearchEngine.preIndex(digitalProducts)
                 }
@@ -227,6 +241,11 @@ class ProductsFragment : Fragment() {
 
             binding.etSearchProduct.hint = "Cari nama paket, pulsa, atau PLN..."
             debounceFilterProducts(immediate = true)
+            if (allDigitalProducts.size < 1000) {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    com.denkasir.data.repository.SyncRepository(requireContext()).syncDigitalCatalogIfNeeded()
+                }
+            }
         }
     }
 
@@ -280,8 +299,8 @@ class ProductsFragment : Fragment() {
                     binding.layoutEmptyState.visibility = View.VISIBLE
                     binding.rvDigitalProductsList.visibility = View.GONE
                     if (query.isEmpty()) {
-                        binding.tvEmptyStateTitle.text = "Belum Ada Layanan Digital"
-                        binding.tvEmptyStateMessage.text = "Layanan pulsa & token PLN belum tersedia."
+                        binding.tvEmptyStateTitle.text = "Sinkronisasi Katalog Digital"
+                        binding.tvEmptyStateMessage.text = "Klik tombol 'Update Katalog' di atas untuk memuat daftar layanan digital terbaru."
                     } else {
                         binding.tvEmptyStateTitle.text = "Layanan Tidak Ditemukan"
                         binding.tvEmptyStateMessage.text = "Tidak ada layanan digital dengan kata kunci \"$currentSearchQuery\"."
@@ -308,8 +327,35 @@ class ProductsFragment : Fragment() {
                 confirmDeleteProduct(product)
             }
         )
+        val screenWidthDp = resources.configuration.screenWidthDp
+        val tabletSpanCount = when {
+            screenWidthDp >= 900 -> 3
+            screenWidthDp >= 600 -> 2
+            else -> 1
+        }
+        val gapPx = (6 * resources.displayMetrics.density).toInt()
+
+        fun createColumnSpacingDecoration() = object : androidx.recyclerview.widget.RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(
+                outRect: android.graphics.Rect,
+                view: View,
+                parent: androidx.recyclerview.widget.RecyclerView,
+                state: androidx.recyclerview.widget.RecyclerView.State
+            ) {
+                outRect.left = gapPx
+                outRect.right = gapPx
+            }
+        }
+
         binding.rvProductsList.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = if (tabletSpanCount > 1) {
+                androidx.recyclerview.widget.GridLayoutManager(requireContext(), tabletSpanCount)
+            } else {
+                LinearLayoutManager(requireContext())
+            }
+            if (tabletSpanCount > 1 && itemDecorationCount == 0) {
+                addItemDecoration(createColumnSpacingDecoration())
+            }
             adapter = productAdapter
         }
 
@@ -326,7 +372,14 @@ class ProductsFragment : Fragment() {
             }
         )
         binding.rvDigitalProductsList.apply {
-            layoutManager = LinearLayoutManager(requireContext())
+            layoutManager = if (tabletSpanCount > 1) {
+                androidx.recyclerview.widget.GridLayoutManager(requireContext(), tabletSpanCount)
+            } else {
+                LinearLayoutManager(requireContext())
+            }
+            if (tabletSpanCount > 1 && itemDecorationCount == 0) {
+                addItemDecoration(createColumnSpacingDecoration())
+            }
             adapter = digitalProductAdapter
         }
     }
@@ -676,14 +729,14 @@ class ProductsFragment : Fragment() {
                 existingProduct.copy(
                     name = name,
                     barcode = barcode,
-                    category = category,
+                    category = if (productType == "DIGITAL") existingProduct.category else category,
                     productType = productType,
                     costPrice = costPrice,
                     sellingPrice = sellingPrice,
-                    stock = if (productType == "DIGITAL") 0.0 else stock,
+                    stock = if (productType == "DIGITAL") existingProduct.stock else stock,
                     imagePath = activeProductPhotoPath,
                     updatedAt = System.currentTimeMillis(),
-                    syncStatus = "PENDING"
+                    syncStatus = if (productType == "DIGITAL") "CUSTOM_PRICE" else "PENDING"
                 )
             } else {
                 ProductEntity(
@@ -695,7 +748,7 @@ class ProductsFragment : Fragment() {
                     productType = productType,
                     costPrice = costPrice,
                     sellingPrice = sellingPrice,
-                    stock = if (productType == "DIGITAL") 0.0 else stock,
+                    stock = if (productType == "DIGITAL") 999.0 else stock,
                     imagePath = activeProductPhotoPath,
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis(),
@@ -777,6 +830,27 @@ class ProductsFragment : Fragment() {
                 AppDatabase.getDatabase(requireContext()).productDao().insertProducts(masterProducts)
             }
             Toast.makeText(requireContext(), "Berhasil mengimpor 8 produk master (.xlsx) ke daftar produk!", Toast.LENGTH_LONG).show()
+        }
+    }
+
+
+    private fun syncDigitalCatalogManual() {
+        binding.btnSyncDigitalCatalog.isEnabled = false
+        binding.btnSyncDigitalCatalog.text = "Syncing..."
+        Toast.makeText(requireContext(), "Memperbarui katalog layanan digital...", Toast.LENGTH_SHORT).show()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = com.denkasir.data.repository.SyncRepository(requireContext()).syncDigitalCatalog(forceFull = true)
+            if (_binding == null) return@launch
+            binding.btnSyncDigitalCatalog.isEnabled = true
+            binding.btnSyncDigitalCatalog.text = "Update Katalog"
+
+            result.onSuccess { summary ->
+                val msg = "Katalog Digital Diperbarui! Total: ${summary.totalItems} layanan (${summary.normalCount} Normal, ${summary.gangguanCount} Gangguan)"
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+            }.onFailure { err ->
+                Toast.makeText(requireContext(), "Gagal memperbarui katalog layanan digital. Periksa koneksi internet Anda.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

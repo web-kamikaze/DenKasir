@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.denkasir.data.local.dao.*
 import com.denkasir.data.local.entity.*
@@ -30,7 +31,7 @@ import java.util.UUID
         StockOpnameEntity::class,
         DigitalConfigEntity::class
     ],
-    version = 10,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -87,7 +88,9 @@ abstract class AppDatabase : RoomDatabase() {
                 digitalConfigDao().saveConfig(
                     DigitalConfigEntity(
                         id = "default_config",
-                        providerName = "OtomaX H2H Server",
+                        providerName = "H2H Gateway Server",
+                        apiUrl = "https://st.riungan.my.id/api/isipulsa/h2h-order",
+                        apiKey = "DENKASIR-H2H-LIVE",
                         balance = 0.0,
                         isActive = true
                     )
@@ -135,6 +138,8 @@ abstract class AppDatabase : RoomDatabase() {
 
             for (element in jsonArray) {
                 val obj = element.asJsonObject
+                val rawType = if (obj.has("productType") && !obj.get("productType").isJsonNull) obj.get("productType").asString else "RETAIL"
+                if (rawType.equals("DIGITAL", ignoreCase = true)) continue
                 val p = ProductEntity(
                     id = if (obj.has("id") && !obj.get("id").isJsonNull) obj.get("id").asString else UUID.randomUUID().toString(),
                     storeId = if (obj.has("storeId") && !obj.get("storeId").isJsonNull) obj.get("storeId").asString else "default_store",
@@ -170,6 +175,28 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN trxMode TEXT NOT NULL DEFAULT 'API_H2H'")
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN smsCenterNumbers TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN smsTemplate TEXT NOT NULL DEFAULT '[KODE].[TUJUAN].[PIN]'")
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN smsDelimiter TEXT NOT NULL DEFAULT '.'")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN distributorRulesJson TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN preferredSimSlot INTEGER NOT NULL DEFAULT -1")
+                db.execSQL("ALTER TABLE digital_configs ADD COLUMN autoSendSms INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -177,6 +204,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "denkasir_database.db"
                 )
+                .addMigrations(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .fallbackToDestructiveMigration()
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {

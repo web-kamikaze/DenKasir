@@ -41,6 +41,10 @@ class CashierUserAdapter(
             binding.tvCashierUsername.text = "@${user.username}"
             binding.tvCashierRoleTag.text = user.role
 
+            binding.btnDeleteCashier.setOnClickListener {
+                onCashierSelected(user)
+            }
+
             binding.root.setOnClickListener {
                 onCashierSelected(user)
             }

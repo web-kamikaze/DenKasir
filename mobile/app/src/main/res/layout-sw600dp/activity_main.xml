@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_screen">
+
+    <!-- Tablet Left Sidebar Navigation Rail (sw600dp) -->
+    <LinearLayout
+        android:id="@+id/bottomNavigation"
+        android:layout_width="96dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:gravity="top|center_horizontal"
+        android:background="@android:color/white"
+        android:elevation="8dp"
+        android:paddingVertical="20dp"
+        android:paddingHorizontal="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <!-- Brand Logo Header in Tablet Sidebar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="20dp">
+
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_header_gradient">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_cash_register" />
+            </FrameLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="DenKasir"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary_purple" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="56dp"
+            android:layout_height="1dp"
+            android:background="#E2E8F0"
+            android:layout_marginBottom="14dp" />
+
+        <LinearLayout
+            android:id="@+id/navKasir"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginVertical="4dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/iconNavKasir"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_nav_kasir"
+                app:tint="@color/primary_purple" />
+            <TextView
+                android:id="@+id/textNavKasir"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/kasir"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary_purple"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navProduk"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginVertical="4dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/iconNavProduk"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_nav_produk"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:id="@+id/textNavProduk"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/produk"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navTransaksi"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginVertical="4dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/iconNavTransaksi"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_nav_transaksi"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:id="@+id/textNavTransaksi"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/transaksi"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navLaporan"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginVertical="4dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/iconNavLaporan"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_nav_laporan"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:id="@+id/textNavLaporan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/laporan"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navAkun"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginVertical="4dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:id="@+id/iconNavAkun"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_nav_akun"
+                app:tint="@color/text_secondary" />
+            <TextView
+                android:id="@+id/textNavAkun"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/akun"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Subtle Vertical Divider between Sidebar & Main Content -->
+    <View
+        android:id="@+id/sidebarDivider"
+        android:layout_width="1dp"
+        android:layout_height="0dp"
+        android:background="#E2E8F0"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/bottomNavigation" />
+
+    <!-- Main Content Area (Full Height & Wide Workspace on Tablet) -->
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragmentContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/sidebarDivider"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

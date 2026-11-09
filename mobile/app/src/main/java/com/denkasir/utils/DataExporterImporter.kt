@@ -134,6 +134,7 @@ object DataExporterImporter {
             val name = if (tokens.size > 2) tokens[2] else "Produk Impor"
             val category = if (tokens.size > 3 && tokens[3].isNotBlank()) tokens[3] else "Pcs"
             val pType = if (tokens.size > 4 && tokens[4].isNotBlank()) tokens[4].uppercase() else "RETAIL"
+            if (pType == "DIGITAL") continue // Katalog produk digital dikelola penuh via API st.riungan.my.id
             val costPrice = tokens.getOrNull(5)?.toDoubleOrNull() ?: 0.0
             val sellingPrice = tokens.getOrNull(6)?.toDoubleOrNull() ?: 0.0
             val stock = tokens.getOrNull(7)?.toDoubleOrNull() ?: 0.0
@@ -267,6 +268,7 @@ object DataExporterImporter {
             val typeVal = if (colType in 0 until row.lastCellNum) {
                 getCellValueAsString(row.getCell(colType))?.uppercase()?.takeIf { it == "RETAIL" || it == "DIGITAL" } ?: "RETAIL"
             } else "RETAIL"
+            if (typeVal == "DIGITAL") continue // Katalog produk digital dikelola penuh via API st.riungan.my.id
 
             val costVal = if (colCost in 0 until row.lastCellNum) getCellValueAsDouble(row.getCell(colCost)) ?: 0.0 else 0.0
             val sellVal = if (colSell in 0 until row.lastCellNum) getCellValueAsDouble(row.getCell(colSell)) ?: 0.0 else 0.0

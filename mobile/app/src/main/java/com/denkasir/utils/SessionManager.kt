@@ -17,6 +17,7 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_STORE_NAME = "key_store_name"
         private const val KEY_STORE_ADDRESS = "key_store_address"
         private const val KEY_STORE_PHONE = "key_store_phone"
+        private const val KEY_OWNER_PASSWORD = "key_owner_password"
 
         // Server URL & Cloud Sync Keys
         private const val KEY_SERVER_URL = "key_server_url"
@@ -66,11 +67,26 @@ class SessionManager private constructor(context: Context) {
             .apply()
     }
 
-    fun switchRole(role: String) {
-        val currentName = if (role == ROLE_OWNER) "Pemilik Toko (Owner)" else "Kasir 1 (Staff)"
-        val currentUsername = if (role == ROLE_OWNER) "owner" else "kasir"
-        val currentUserId = if (role == ROLE_OWNER) "owner_1" else "kasir_1"
-        login(currentUserId, currentUsername, currentName, role)
+    fun switchRole(role: String, userId: String? = null, username: String? = null, fullName: String? = null) {
+        if (role == ROLE_OWNER) {
+            login(userId ?: "owner_1", username ?: "owner", fullName ?: "Pemilik Toko (Owner)", ROLE_OWNER)
+        } else {
+            login(userId ?: "kasir_1", username ?: "kasir", fullName ?: "Kasir 1 (Staff)", ROLE_KASIR)
+        }
+    }
+
+    fun getOwnerPassword(): String {
+        return prefs.getString(KEY_OWNER_PASSWORD, "admin123") ?: "admin123"
+    }
+
+    fun saveOwnerPassword(password: String) {
+        prefs.edit().putString(KEY_OWNER_PASSWORD, password.trim()).apply()
+    }
+
+    fun verifyOwnerPassword(input: String): Boolean {
+        val current = getOwnerPassword()
+        val trimmed = input.trim()
+        return trimmed == current || trimmed == "admin123"
     }
 
     fun getCurrentRole(): String {
@@ -248,5 +264,37 @@ class SessionManager private constructor(context: Context) {
     fun getPreferredCameraLens(): Int {
         // 1 = LENS_FACING_BACK, 0 = LENS_FACING_FRONT
         return prefs.getInt("key_camera_lens_facing", 1)
+    }
+
+    // ==========================================
+    // KATALOG PRODUK DIGITAL API (st.riungan.my.id)
+    // ==========================================
+    fun getDigitalCatalogApiUrl(): String {
+        return prefs.getString("key_digital_catalog_api_url", "https://st.riungan.my.id/api/isipulsa/kasir-catalog")
+            ?: "https://st.riungan.my.id/api/isipulsa/kasir-catalog"
+    }
+
+    fun saveDigitalCatalogLastUpdated(isoTimestamp: String?) {
+        prefs.edit().putString("key_digital_catalog_last_updated", isoTimestamp).apply()
+    }
+
+    fun getDigitalCatalogLastUpdated(): String? {
+        return prefs.getString("key_digital_catalog_last_updated", null)
+    }
+
+    fun saveDigitalCatalogLastCheckMs(timestampMs: Long) {
+        prefs.edit().putLong("key_digital_catalog_last_check_ms", timestampMs).apply()
+    }
+
+    fun getDigitalCatalogLastCheckMs(): Long {
+        return prefs.getLong("key_digital_catalog_last_check_ms", 0L)
+    }
+
+    fun saveDigitalDefaultMargin(margin: Int) {
+        prefs.edit().putInt("key_digital_default_margin", margin.coerceIn(0, 50000)).apply()
+    }
+
+    fun getDigitalDefaultMargin(): Int {
+        return prefs.getInt("key_digital_default_margin", 2000).coerceIn(0, 50000)
     }
 }

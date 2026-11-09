@@ -70,6 +70,36 @@ class TransactionAdapter(
             binding.tvCustomerName.text = trx.customerName ?: "Pelanggan Warung"
             binding.tvTrxTotalAmount.text = CurrencyUtils.formatRupiah(trx.totalAmount)
 
+            when (trx.status.uppercase()) {
+                "PROSES", "PENDING" -> {
+                    binding.badgeDigitalStatus.visibility = android.view.View.VISIBLE
+                    binding.badgeDigitalStatus.text = "?? PROSES"
+                    binding.badgeDigitalStatus.setTextColor(android.graphics.Color.parseColor("#B45309"))
+                    binding.badgeDigitalStatus.setBackgroundResource(R.drawable.bg_badge_pending)
+                }
+                "SUKSES", "SUCCESS" -> {
+                    binding.badgeDigitalStatus.visibility = android.view.View.VISIBLE
+                    binding.badgeDigitalStatus.text = "?? SUKSES"
+                    binding.badgeDigitalStatus.setTextColor(android.graphics.Color.parseColor("#059669"))
+                    binding.badgeDigitalStatus.setBackgroundResource(R.drawable.bg_badge_cocok)
+                }
+                "GANGGUAN", "GAGAL" -> {
+                    binding.badgeDigitalStatus.visibility = android.view.View.VISIBLE
+                    binding.badgeDigitalStatus.text = "?? GANGGUAN"
+                    binding.badgeDigitalStatus.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+                    binding.badgeDigitalStatus.setBackgroundResource(R.drawable.bg_badge_selisih)
+                }
+                "REFUNDED", "REFUND" -> {
+                    binding.badgeDigitalStatus.visibility = android.view.View.VISIBLE
+                    binding.badgeDigitalStatus.text = "?? REFUND"
+                    binding.badgeDigitalStatus.setTextColor(android.graphics.Color.parseColor("#64748B"))
+                    binding.badgeDigitalStatus.setBackgroundResource(R.drawable.bg_badge_uncounted)
+                }
+                else -> {
+                    binding.badgeDigitalStatus.visibility = android.view.View.GONE
+                }
+            }
+
             binding.badgePaymentMethod.text = trx.paymentMethod
             when (trx.paymentMethod.uppercase()) {
                 "CASH", "TUNAI" -> {
@@ -79,6 +109,10 @@ class TransactionAdapter(
                 "QRIS" -> {
                     binding.badgePaymentMethod.setTextColor(ContextCompat.getColor(context, R.color.green_total))
                     binding.badgePaymentMethod.background = ContextCompat.getDrawable(context, R.drawable.bg_badge_cepat)
+                }
+                "TRANSFER" -> {
+                    binding.badgePaymentMethod.setTextColor(android.graphics.Color.parseColor("#0284C7"))
+                    binding.badgePaymentMethod.background = ContextCompat.getDrawable(context, R.drawable.bg_badge_sesi_aktif)
                 }
                 "KASBON" -> {
                     binding.badgePaymentMethod.setTextColor(ContextCompat.getColor(context, R.color.red_cancel))

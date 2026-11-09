@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:strokeColor="#CBD5E1"
+    app:strokeWidth="1dp"
+    app:cardBackgroundColor="#F8FAFC">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvDistributorName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Distributor Pulsa Murah"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#0F172A" />
+
+            <TextView
+                android:id="@+id/tvDistributorCategoryBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PULSA"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#3E24E2"
+                android:background="@drawable/bg_role_badge_owner"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tvDistributorSimBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SIM 1"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#059669"
+                android:background="@drawable/bg_badge_cocok"
+                android:paddingHorizontal="7dp"
+                android:paddingVertical="3dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/btnDeleteDistributor"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:padding="4dp"
+                android:src="@drawable/ic_close"
+                app:tint="#EF4444"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Hapus Distributor" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:id="@+id/tvDistributorCenter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Center: 081234567890"
+                android:textSize="12sp"
+                android:textColor="#334155" />
+
+            <TextView
+                android:id="@+id/tvDistributorPin"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PIN: 1234"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#0284C7" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvDistributorFormatPreview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Perintah: S10.081234567890.1234"
+            android:textSize="11sp"
+            android:textColor="#64748B"
+            android:fontFamily="monospace" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,15 +1,19 @@
-package com.denkasir.ui.pos
+﻿package com.denkasir.ui.pos
 
 import android.graphics.Color
-import android.graphics.Typeface
+import android.graphics.Paint
+import android.widget.Toast
+import com.denkasir.R
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.denkasir.R
-import com.denkasir.databinding.ItemNominalButtonBinding
+import com.denkasir.databinding.ItemDigitalPackageCardBinding
+import com.denkasir.utils.CurrencyUtils
 
 class NominalGridAdapter(
-    private val onNominalSelected: (NominalOption) -> Unit
+    private val onNominalSelected: (NominalOption) -> Unit,
+    private val onInfoClicked: ((NominalOption) -> Unit)? = null
 ) : RecyclerView.Adapter<NominalGridAdapter.NominalViewHolder>() {
 
     private val items = mutableListOf<NominalOption>()
@@ -30,7 +34,7 @@ class NominalGridAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NominalViewHolder {
-        val binding = ItemNominalButtonBinding.inflate(
+        val binding = ItemDigitalPackageCardBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
@@ -44,23 +48,77 @@ class NominalGridAdapter(
 
     override fun getItemCount(): Int = items.size
 
-    inner class NominalViewHolder(private val binding: ItemNominalButtonBinding) :
+    inner class NominalViewHolder(private val binding: ItemDigitalPackageCardBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(option: NominalOption, isSelected: Boolean) {
-            binding.tvNominalLabel.text = option.label
-
-            if (isSelected) {
-                binding.tvNominalLabel.setBackgroundResource(R.drawable.bg_nominal_card_selected)
-                binding.tvNominalLabel.setTextColor(Color.WHITE)
-                binding.tvNominalLabel.setTypeface(null, Typeface.BOLD)
+            // 1. Badge Top-Left
+            if (option.badgeText.isNotBlank()) {
+                binding.tvBadge.visibility = View.VISIBLE
+                binding.tvBadge.text = option.badgeText
+                if (!option.isAvailable) {
+                    binding.tvBadge.setBackgroundResource(R.drawable.bg_badge_out_of_stock)
+                } else {
+                    binding.tvBadge.setBackgroundResource(R.drawable.bg_badge_muraaah)
+                }
             } else {
-                binding.tvNominalLabel.setBackgroundResource(R.drawable.bg_nominal_card_unselected)
-                binding.tvNominalLabel.setTextColor(Color.parseColor("#0F172A"))
-                binding.tvNominalLabel.setTypeface(null, Typeface.NORMAL)
+                binding.tvBadge.visibility = View.GONE
             }
 
-            binding.tvNominalLabel.setOnClickListener {
+            // 2. Column 1 (Kuota / Pulsa / Saldo)
+            binding.tvCol1Title.text = option.column1Title.ifEmpty { "Kuota" }
+            binding.tvCol1Value.text = option.quotaLabel.ifEmpty { option.label }
+
+            // 3. Column 2 (Masa berlaku)
+            binding.tvCol2Title.text = option.column2Title.ifEmpty { "Masa berlaku" }
+            binding.tvCol2Value.text = option.validityLabel.ifEmpty { "-" }
+
+            // 4. Column 3 (Harga Coret & Jual)
+            if (option.isCustom) {
+                binding.tvOriginalPrice.visibility = View.GONE
+                binding.tvSellingPrice.text = "Nominal Bebas"
+                binding.tvSellingPrice.setTextColor(Color.parseColor("#3E24E2"))
+            } else {
+                if (option.originalPrice > option.sellingPrice && option.isAvailable) {
+                    binding.tvOriginalPrice.visibility = View.VISIBLE
+                    binding.tvOriginalPrice.text = CurrencyUtils.formatRupiah(option.originalPrice)
+                    binding.tvOriginalPrice.paintFlags = binding.tvOriginalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+                } else {
+                    binding.tvOriginalPrice.visibility = View.GONE
+                }
+                if (!option.isAvailable) {
+                    binding.tvSellingPrice.text = "Stok Kosong"
+                    binding.tvSellingPrice.setTextColor(Color.parseColor("#DC2626"))
+                } else {
+                    binding.tvSellingPrice.text = CurrencyUtils.formatRupiah(option.sellingPrice)
+                    binding.tvSellingPrice.setTextColor(Color.parseColor("#16A34A")) // green bold
+                }
+            }
+
+            // 5. Bottom Bar
+            binding.tvPackageName.text = option.label
+
+            // 6. Selected vs Unselected Styling (TETAP PUTIH!)
+            val density = binding.root.context.resources.displayMetrics.density
+            if (isSelected) {
+                binding.cardPackage.strokeColor = Color.parseColor("#3E24E2")
+                binding.cardPackage.strokeWidth = (2.2f * density).toInt().coerceAtLeast(4)
+                binding.cardPackage.setCardBackgroundColor(Color.parseColor("#F8F7FF"))
+                binding.cardPackage.cardElevation = 4f * density
+                binding.layoutBottomBar.setBackgroundColor(Color.parseColor("#EEF2FF"))
+            } else {
+                binding.cardPackage.strokeColor = Color.parseColor("#E2E8F0")
+                binding.cardPackage.strokeWidth = (1f * density).toInt().coerceAtLeast(2)
+                binding.cardPackage.setCardBackgroundColor(Color.WHITE)
+                binding.cardPackage.cardElevation = 1.5f * density
+                binding.layoutBottomBar.setBackgroundColor(Color.parseColor("#F8FAFC"))
+            }
+
+            // Dim card if not available
+            binding.root.alpha = if (option.isAvailable) 1.0f else 0.55f
+
+            // Card click listener
+            binding.root.setOnClickListener {
                 val currentPos = bindingAdapterPosition
                 if (currentPos != RecyclerView.NO_POSITION) {
                     val previousIndex = selectedIndex
@@ -70,7 +128,19 @@ class NominalGridAdapter(
                         notifyItemChanged(selectedIndex)
                     }
                     onNominalSelected(option)
+                    if (!option.isAvailable) {
+                        Toast.makeText(
+                            binding.root.context,
+                            "⚠️ Stok paket ini sedang KOSONG / GANGGUAN dari distributor.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
+            }
+
+            // Info icon click listener
+            binding.btnInfoIcon.setOnClickListener {
+                onInfoClicked?.invoke(option)
             }
         }
     }

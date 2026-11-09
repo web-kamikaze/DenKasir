@@ -48,6 +48,16 @@ data class ProductEntity(
     val syncStatus: String = "PENDING"
 )
 
+/**
+ * Aturan Bisnis: Mendeteksi apakah produk digital dalam kondisi STOK KOSONG / GANGGUAN
+ */
+fun ProductEntity.isDigitalOutOfStock(): Boolean {
+    if (this.productType != "DIGITAL") return false
+    if (this.stock <= 0.0) return true
+    val combined = (this.name + " " + (this.providerCode ?: "")).uppercase()
+    return combined.contains("KOSONG") || combined.contains("GANGGUAN") || combined.contains("STOK HABIS") || combined.contains("HABIS")
+}
+
 @Entity(tableName = "transactions")
 data class TransactionEntity(
     @PrimaryKey
@@ -144,13 +154,20 @@ data class DigitalConfigEntity(
     @PrimaryKey
     val id: String = "default_config",
     val providerName: String = "OtomaX H2H",
-    val apiUrl: String = "https://api.distributor-pulsa.com/h2h",
-    val apiKey: String = "",
+    val apiUrl: String = "https://st.riungan.my.id/api/isipulsa/h2h-order",
+    val apiKey: String = "DENKASIR-H2H-LIVE",
     val memberId: String = "",
     val pinPassword: String = "",
     val balance: Double = 0.0,
     val isActive: Boolean = true,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val trxMode: String = "API_H2H", // "API_H2H", "SMS_CENTER", "AUTO_FALLBACK"
+    val smsCenterNumbers: String = "", // Comma-separated numbers e.g. "081234567890,085612345678"
+    val smsTemplate: String = "[KODE].[TUJUAN].[PIN]",
+    val smsDelimiter: String = ".",
+    val distributorRulesJson: String = "", // JSON array of DistributorRule
+    val preferredSimSlot: Int = -1, // -1 = Otomatis/Default, 0 = SIM 1, 1 = SIM 2
+    val autoSendSms: Boolean = true // Langsung kirim via SmsManager di latar belakang
 )
 
 @Entity(tableName = "purchase_orders")

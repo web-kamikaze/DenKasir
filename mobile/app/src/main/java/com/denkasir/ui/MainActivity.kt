@@ -8,7 +8,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.denkasir.R
+import com.denkasir.data.repository.SyncRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.denkasir.databinding.ActivityMainBinding
 import com.denkasir.ui.account.AccountFragment
 import com.denkasir.ui.bku.ReportsFragment
@@ -42,6 +46,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupBottomNav()
+
+        // Sinkronisasi otomatis katalog produk digital (API st.riungan.my.id) di latar belakang
+        lifecycleScope.launch(Dispatchers.IO) {
+            SyncRepository(applicationContext).syncDigitalCatalogIfNeeded()
+        }
     }
 
     private fun checkAndRequestStoragePermissions() {
@@ -88,23 +97,44 @@ class MainActivity : AppCompatActivity() {
             .commitAllowingStateLoss()
     }
 
+    fun navigateToAccount() {
+        loadFragment(AccountFragment())
+        highlightTab("AKUN")
+    }
+
     private fun highlightTab(tab: String) {
         val activeColor = ContextCompat.getColor(this, R.color.primary_purple)
         val inactiveColor = ContextCompat.getColor(this, R.color.text_secondary)
+        val isTablet = resources.configuration.smallestScreenWidthDp >= 600
 
-        binding.iconNavKasir.setColorFilter(if (tab == "KASIR") activeColor else inactiveColor)
-        binding.textNavKasir.setTextColor(if (tab == "KASIR") activeColor else inactiveColor)
+        fun styleNavItem(
+            container: android.view.View,
+            icon: android.widget.ImageView,
+            label: android.widget.TextView,
+            isSelected: Boolean
+        ) {
+            icon.setColorFilter(if (isSelected) activeColor else inactiveColor)
+            label.setTextColor(if (isSelected) activeColor else inactiveColor)
+            label.setTypeface(null, if (isSelected) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
 
-        binding.iconNavProduk.setColorFilter(if (tab == "PRODUK") activeColor else inactiveColor)
-        binding.textNavProduk.setTextColor(if (tab == "PRODUK") activeColor else inactiveColor)
+            if (isTablet) {
+                if (isSelected) {
+                    val pill = android.graphics.drawable.GradientDrawable().apply {
+                        shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                        cornerRadius = 14f * resources.displayMetrics.density
+                        setColor(android.graphics.Color.parseColor("#EEF2FF"))
+                    }
+                    container.background = pill
+                } else {
+                    container.background = null
+                }
+            }
+        }
 
-        binding.iconNavTransaksi.setColorFilter(if (tab == "TRANSAKSI") activeColor else inactiveColor)
-        binding.textNavTransaksi.setTextColor(if (tab == "TRANSAKSI") activeColor else inactiveColor)
-
-        binding.iconNavLaporan.setColorFilter(if (tab == "LAPORAN") activeColor else inactiveColor)
-        binding.textNavLaporan.setTextColor(if (tab == "LAPORAN") activeColor else inactiveColor)
-
-        binding.iconNavAkun.setColorFilter(if (tab == "AKUN") activeColor else inactiveColor)
-        binding.textNavAkun.setTextColor(if (tab == "AKUN") activeColor else inactiveColor)
+        styleNavItem(binding.navKasir, binding.iconNavKasir, binding.textNavKasir, tab == "KASIR")
+        styleNavItem(binding.navProduk, binding.iconNavProduk, binding.textNavProduk, tab == "PRODUK")
+        styleNavItem(binding.navTransaksi, binding.iconNavTransaksi, binding.textNavTransaksi, tab == "TRANSAKSI")
+        styleNavItem(binding.navLaporan, binding.iconNavLaporan, binding.textNavLaporan, tab == "LAPORAN")
+        styleNavItem(binding.navAkun, binding.iconNavAkun, binding.textNavAkun, tab == "AKUN")
     }
 }

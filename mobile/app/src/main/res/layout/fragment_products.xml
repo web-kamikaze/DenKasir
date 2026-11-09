@@ -230,28 +230,56 @@
 
                 <TextView
                     android:id="@+id/tvDepositProviderStatus"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="Server: OtomaX H2H - Siap Transaksi"
+                    android:layout_marginEnd="8dp"
+                    android:text="Katalog Layanan Digital ? Siap Transaksi"
                     android:textColor="#E0E7FF"
                     android:textSize="11sp"
                     android:layout_marginTop="4dp"
                     app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/layoutDigitalActionButtons"
                     app:layout_constraintTop_toBottomOf="@id/tvDepositBalanceAmount" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnTopUpDeposit"
+                <LinearLayout
+                    android:id="@+id/layoutDigitalActionButtons"
                     android:layout_width="wrap_content"
-                    android:layout_height="38dp"
-                    android:text="+ Top Up Saldo"
-                    android:textColor="#3E24E2"
-                    android:textStyle="bold"
-                    android:textSize="12sp"
-                    app:backgroundTint="@android:color/white"
-                    app:cornerRadius="10dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="end"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent" />
+                    app:layout_constraintBottom_toBottomOf="parent">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnTopUpDeposit"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:minHeight="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="+ Top Up Saldo"
+                        android:textColor="#3E24E2"
+                        android:textStyle="bold"
+                        android:textSize="11sp"
+                        app:backgroundTint="@android:color/white"
+                        app:cornerRadius="10dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSyncDigitalCatalog"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:minHeight="0dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:layout_marginTop="6dp"
+                        android:text="Update Katalog"
+                        android:textColor="@android:color/white"
+                        android:textStyle="bold"
+                        android:textSize="11sp"
+                        app:backgroundTint="#10B981"
+                        app:cornerRadius="10dp" />
+                </LinearLayout>
 
             </androidx.constraintlayout.widget.ConstraintLayout>
         </androidx.cardview.widget.CardView>

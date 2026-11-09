@@ -25,4 +25,18 @@ interface DenKasirApi {
 
     @GET("health")
     suspend fun checkHealth(): Response<Map<String, String>>
+
+    @POST
+    suspend fun postH2hOrder(
+        @Url fullUrl: String,
+        @Header("X-API-Key") apiKey: String,
+        @Body payload: H2hOrderRequestDto
+    ): Response<H2hOrderResponseDto>
+
+    @GET
+    suspend fun fetchDigitalCatalogFromUrl(
+        @Url fullUrl: String,
+        @Query("since") since: String? = null,
+        @Query("margin") margin: Int = 2000
+    ): Response<DigitalCatalogApiResponseDto>
 }

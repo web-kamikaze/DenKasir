@@ -66,6 +66,15 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE productType = 'DIGITAL' ORDER BY name ASC")
     fun getDigitalProducts(): Flow<List<ProductEntity>>
 
+    @Query("SELECT * FROM products WHERE productType = 'DIGITAL'")
+    suspend fun getDigitalProductsList(): List<ProductEntity>
+
+    @Query("SELECT COUNT(*) FROM products WHERE productType = 'DIGITAL'")
+    suspend fun getDigitalProductCount(): Int
+
+    @Query("DELETE FROM products WHERE productType = 'DIGITAL' AND id NOT LIKE 'isipulsa_%'")
+    suspend fun deleteLegacyDigitalProducts()
+
     @Query("SELECT * FROM products WHERE category = :category AND productType = 'RETAIL' ORDER BY name ASC")
     fun getProductsByCategory(category: String): Flow<List<ProductEntity>>
 
@@ -140,6 +149,24 @@ interface TransactionDao {
 
     @Query("DELETE FROM transaction_items")
     suspend fun clearTransactionItems()
+
+    @Update
+    suspend fun updateTransaction(transaction: TransactionEntity)
+
+    @Update
+    suspend fun updateTransactionItem(item: TransactionItemEntity)
+
+    @Query("UPDATE transaction_items SET digitalStatus = :status, snNumber = :sn WHERE id = :itemId")
+    suspend fun updateDigitalItemStatus(itemId: String, status: String, sn: String?)
+
+    @Query("UPDATE transaction_items SET digitalStatus = :status, snNumber = :sn WHERE transactionId = :trxId")
+    suspend fun updateItemDigitalResult(trxId: String, sn: String?, status: String)
+
+    @Query("UPDATE transactions SET status = :status WHERE id = :trxId")
+    suspend fun updateTransactionStatus(trxId: String, status: String)
+
+    @Query("SELECT * FROM transactions WHERE id = :trxId LIMIT 1")
+    suspend fun getTransactionById(trxId: String): TransactionEntity?
 }
 
 @Dao
@@ -251,6 +278,12 @@ interface StockOpnameDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStockOpname(stockOpname: StockOpnameEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStockOpnames(stockOpnames: List<StockOpnameEntity>)
+
+    @Query("SELECT * FROM stock_opnames ORDER BY createdAt DESC LIMIT :limit")
+    suspend fun getRecentStockOpnames(limit: Int = 50): List<StockOpnameEntity>
 
     @Query("DELETE FROM stock_opnames")
     suspend fun clearStockOpnames()

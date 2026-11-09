@@ -11,7 +11,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerLayout"
         android:layout_width="0dp"
-        android:layout_height="68dp"
+        android:layout_height="72dp"
         android:background="@drawable/bg_header_gradient"
         android:paddingHorizontal="16dp"
         app:layout_constraintTop_toTopOf="parent"
@@ -29,17 +29,35 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />
 
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Stokopname"
-            android:textColor="@android:color/white"
-            android:textSize="18sp"
-            android:textStyle="bold"
+            android:orientation="vertical"
             android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
             app:layout_constraintStart_toEndOf="@id/btnBack"
+            app:layout_constraintEnd_toStartOf="@id/btnScanOpname"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Stokopname"
+                android:textColor="@android:color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvRoleModeBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mode Owner: Audit &amp; Approval"
+                android:textColor="#E0E7FF"
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
+
+        </LinearLayout>
 
         <ImageButton
             android:id="@+id/btnScanOpname"
@@ -73,7 +91,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="16dp"
-        android:paddingTop="10dp"
+        android:paddingTop="8dp"
         android:paddingBottom="4dp"
         app:layout_constraintTop_toBottomOf="@id/headerLayout"
         app:layout_constraintStart_toStartOf="parent"
@@ -115,12 +133,31 @@
                             android:id="@+id/tvTotalProdukOpname"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="-"
-                            tools:text="4.128"
+                            android:text="0"
                             android:textColor="@color/text_primary"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:layout_marginTop="1dp" />
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Dihitung"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+                        <TextView
+                            android:id="@+id/tvDihitungOpname"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="#3E24E2"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -138,12 +175,10 @@
                             android:id="@+id/tvCocokOpname"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="-"
-                            tools:text="4.128"
+                            android:text="0"
                             android:textColor="#059669"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:layout_marginTop="1dp" />
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -161,47 +196,76 @@
                             android:id="@+id/tvSelisihOpname"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="-"
-                            tools:text="0"
+                            android:text="0"
                             android:textColor="#DC2626"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:layout_marginTop="1dp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Kecocokan"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="11sp" />
-                        <TextView
-                            android:id="@+id/tvProgresOpname"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="100%"
-                            android:textColor="#2563EB"
-                            android:textSize="17sp"
-                            android:textStyle="bold"
-                            android:layout_marginTop="1dp" />
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
 
                 </LinearLayout>
 
-                <!-- Progress Bar -->
-                <ProgressBar
-                    android:id="@+id/progressOpname"
-                    style="?android:attr/progressBarStyleHorizontal"
+                <!-- Progress Bar Penghitungan -->
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="5dp"
-                    android:layout_marginTop="8dp"
-                    android:max="100"
-                    android:progress="100" />
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <ProgressBar
+                        android:id="@+id/progressOpname"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="0dp"
+                        android:layout_height="8dp"
+                        android:layout_weight="1"
+                        android:progress="0"
+                        android:max="100"
+                        android:progressTint="#3E24E2"
+                        android:progressBackgroundTint="#E2E8F0" />
+
+                    <TextView
+                        android:id="@+id/tvProgresOpname"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0%"
+                        android:textColor="#3E24E2"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="8dp" />
+
+                </LinearLayout>
+
+                <!-- Baris Estimasi Nilai Selisih (Loss / Gain) -->
+                <LinearLayout
+                    android:id="@+id/layoutLossSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="#F8FAFC"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:id="@+id/tvLossLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Estimasi Nilai Selisih (Loss):"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvTotalNilaiSelisih"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Rp 0"
+                        android:textColor="#059669"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -209,7 +273,7 @@
         <!-- Search Bar -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
             android:layout_marginTop="8dp"
             app:cardCornerRadius="12dp"
             app:cardElevation="1dp"
@@ -218,13 +282,15 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:orientation="horizontal"
                 android:gravity="center_vertical"
+                android:orientation="horizontal"
                 android:paddingHorizontal="12dp">
+
                 <ImageView
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:src="@drawable/ic_search" />
+
                 <EditText
                     android:id="@+id/etSearchOpname"
                     android:layout_width="match_parent"
@@ -239,68 +305,99 @@
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Filter Chips: Semua, Selisih, Cocok -->
-        <LinearLayout
+        <!-- Category Horizontal Scroll (Cycle Counting) -->
+        <HorizontalScrollView
+            android:id="@+id/scrollCategories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
+            android:scrollbars="none"
             android:layout_marginTop="8dp">
 
-            <TextView
-                android:id="@+id/chipSemua"
-                android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:gravity="center"
-                android:text="Semua"
-                android:textColor="@android:color/white"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:background="@drawable/bg_chip_selected"
-                android:paddingHorizontal="12dp"
-                android:layout_marginEnd="6dp" />
-
-            <TextView
-                android:id="@+id/chipSelisih"
-                android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:gravity="center"
-                android:text="Selisih"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:background="@drawable/bg_chip_unselected"
-                android:paddingHorizontal="12dp"
-                android:layout_marginEnd="6dp" />
-
-            <TextView
-                android:id="@+id/chipCocok"
-                android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:gravity="center"
-                android:text="Cocok"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
-                android:background="@drawable/bg_chip_unselected"
-                android:paddingHorizontal="12dp" />
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <TextView
-                android:id="@+id/tvDiperiksaCount"
+            <LinearLayout
+                android:id="@+id/layoutCategoryChips"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="4.128 produk"
-                android:textColor="@color/text_secondary"
-                android:textSize="11sp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical" />
 
-        </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Filter Chips: Semua, Belum Dihitung, Selisih, Cocok -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:layout_marginTop="6dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/chipSemua"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="Semua"
+                    android:textColor="@android:color/white"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_chip_selected"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/chipBelumDihitung"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="Belum Dihitung"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/chipSelisih"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="Selisih"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/chipCocok"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:gravity="center"
+                    android:text="Cocok"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_chip_unselected"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:id="@+id/tvDiperiksaCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0 produk"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
 
     </LinearLayout>
 
-    <!-- RecyclerView Items Opname (View Recycling Enabled!) -->
+    <!-- RecyclerView Items Opname -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvOpnameItems"
         android:layout_width="0dp"
@@ -314,7 +411,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_stock_opname" />
 
-    <!-- Bottom Action Button: Selesaikan Stokopname -->
+    <!-- Bottom Action Button: Selesaikan / Kirim Draft Opname -->
     <LinearLayout
         android:id="@+id/bottomActionLayout"
         android:layout_width="0dp"
@@ -330,11 +427,11 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSelesaikanOpname"
             android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:text="✓ Selesaikan Stokopname"
+            android:layout_height="48dp"
+            android:text="Verifikasi &amp; Terapkan Penyesuaian"
             android:textColor="@android:color/white"
             android:textStyle="bold"
-            android:textSize="15sp"
+            android:textSize="14sp"
             app:backgroundTint="#3E24E2"
             app:cornerRadius="12dp" />
     </LinearLayout>

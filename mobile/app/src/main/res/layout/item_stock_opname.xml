@@ -50,6 +50,15 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/tvOpnameCategoryBarcode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Kategori: Umum"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:layout_marginTop="1dp" />
+
+            <TextView
                 android:id="@+id/tvOpnameStockDetail"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -60,16 +69,16 @@
 
         </LinearLayout>
 
-        <!-- Status Badge (Cocok / Selisih) -->
+        <!-- Status Badge (Belum Dihitung / Cocok / Selisih) -->
         <TextView
             android:id="@+id/badgeStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="✓ Cocok"
-            android:textColor="#059669"
-            android:textSize="12sp"
+            android:text="Belum Dihitung"
+            android:textColor="#64748B"
+            android:textSize="11sp"
             android:textStyle="bold"
-            android:background="@drawable/bg_badge_cocok"
+            android:background="@drawable/bg_badge_uncounted"
             android:paddingHorizontal="10dp"
             android:paddingVertical="5dp"
             app:layout_constraintEnd_toEndOf="parent"

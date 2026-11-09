@@ -25,7 +25,7 @@
             android:orientation="vertical"
             android:visibility="visible">
 
-            <!-- Header: Back Arrow + Title -->
+            <!-- Header: Back Arrow + Title + Buka Katalog Button -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -43,14 +43,101 @@
 
                 <TextView
                     android:id="@+id/tvCategoryMainTitle"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:layout_marginStart="12dp"
                     android:text="Isi Ulang &amp; Tagihan"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="#0F172A" />
+
+                <TextView
+                    android:id="@+id/btnShowAllCatalogDialog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📋 Semua Produk"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#3E24E2"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="5dp"
+                    android:background="@drawable/bg_input_box"
+                    android:clickable="true"
+                    android:focusable="true" />
             </LinearLayout>
+
+            <!-- Search Bar for Digital Products in Dialog -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_input_box"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_search"
+                    app:tint="#64748B" />
+
+                <EditText
+                    android:id="@+id/etSearchDigitalInDialog"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@null"
+                    android:hint="Cari produk digital, paket, atau kode..."
+                    android:textColorHint="#94A3B8"
+                    android:textColor="#0F172A"
+                    android:textSize="13sp"
+                    android:singleLine="true" />
+
+                <ImageView
+                    android:id="@+id/btnClearSearchDigital"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:padding="2dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="#94A3B8"
+                    android:visibility="gone"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- Status Banner -->
+            <TextView
+                android:id="@+id/tvDigitalStatsBadge"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="⚡ Memuat katalog produk digital..."
+                android:textSize="11sp"
+                android:textColor="#64748B" />
+
+            <!-- Search Results Recycler -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvDigitalSearchResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvEmptySearchResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Tidak ditemukan produk digital dengan kata kunci tersebut."
+                android:textSize="13sp"
+                android:textColor="#94A3B8"
+                android:gravity="center"
+                android:paddingVertical="16dp"
+                android:visibility="gone" />
 
             <!-- Section 1: Isi Ulang -->
             <TextView
@@ -162,6 +249,34 @@
                     android:singleLine="true"
                     android:inputType="phone" />
 
+                <LinearLayout
+                    android:id="@+id/containerDetectedOperatorBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ImageView
+                        android:id="@+id/ivDetectedOperatorLogo"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginEnd="4dp"
+                        android:scaleType="fitCenter" />
+
+                    <TextView
+                        android:id="@+id/tvDetectedOperatorText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="by.U"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
                 <ImageButton
                     android:id="@+id/btnContactPicker"
                     android:layout_width="32dp"
@@ -194,6 +309,15 @@
                 android:clickable="true"
                 android:focusable="true">
 
+                <ImageView
+                    android:id="@+id/ivSelectedOperatorLogo"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="8dp"
+                    android:scaleType="fitCenter"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
                 <TextView
                     android:id="@+id/tvSelectedOperator"
                     android:layout_width="0dp"
@@ -210,15 +334,127 @@
                     android:scaleType="centerInside" />
             </LinearLayout>
 
-            <!-- 3. Nominal Field (Image #2) -->
-            <TextView
-                android:id="@+id/tvNominalLabel"
-                android:layout_width="wrap_content"
+            <!-- 2b. Kabupaten / Kota PDAM (Visible when category is PDAM / regional) -->
+            <LinearLayout
+                android:id="@+id/containerKabupatenSection"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:layout_marginTop="14dp"
-                android:text="Nominal"
-                android:textSize="13sp"
-                android:textColor="#334155" />
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/tvKabupatenLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Pilih Kabupaten / Kota PDAM"
+                    android:textSize="13sp"
+                    android:textColor="#334155" />
+
+                <LinearLayout
+                    android:id="@+id/containerKabupatenDropdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_input_box"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:id="@+id/tvSelectedKabupaten"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pilih Kabupaten / Kota..."
+                        android:textColor="#0F172A"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_chevron_down"
+                        android:scaleType="centerInside" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 3. Nominal Field (Image #2) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="14dp">
+
+                <TextView
+                    android:id="@+id/tvNominalLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Pilihan Paket &amp; Nominal"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#334155" />
+
+                <TextView
+                    android:id="@+id/btnBrowseOperatorCatalog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📋 Semua Paket"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#3E24E2"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp"
+                    android:background="@drawable/bg_input_box"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- Search in Nominal Packages -->
+            <LinearLayout
+                android:id="@+id/containerSearchNominal"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_input_box"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="12dp">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_search"
+                    app:tint="#64748B" />
+
+                <EditText
+                    android:id="@+id/etSearchNominalPackage"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@null"
+                    android:hint="Cari paket, kuota, atau nominal..."
+                    android:textColorHint="#94A3B8"
+                    android:textColor="#0F172A"
+                    android:textSize="12.5sp"
+                    android:singleLine="true" />
+
+                <ImageView
+                    android:id="@+id/btnClearSearchNominal"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:padding="2dp"
+                    android:src="@drawable/ic_close"
+                    app:tint="#94A3B8"
+                    android:visibility="gone"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvNominalGrid"
@@ -226,7 +462,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:nestedScrollingEnabled="false"
-                tools:listitem="@layout/item_nominal_button" />
+                tools:listitem="@layout/item_digital_package_card" />
 
             <!-- Custom Nominal Input (Visible when "Lainnya" chosen) -->
             <LinearLayout

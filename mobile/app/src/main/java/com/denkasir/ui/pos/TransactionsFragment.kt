@@ -28,6 +28,7 @@ import com.denkasir.utils.CurrencyUtils
 import com.denkasir.utils.DateFilterHelper
 import com.denkasir.utils.DateFilterRange
 import com.denkasir.utils.ReceiptFormatterUtils
+import com.denkasir.utils.DigitalStatusDialogHelper
 import com.denkasir.utils.ReportPeriodType
 import com.denkasir.utils.SessionManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -455,6 +456,10 @@ class TransactionsFragment : Fragment() {
     }
 
     private fun showDeletePurchaseDialog(po: PurchaseOrderEntity) {
+        if (!SessionManager.getInstance(requireContext()).isOwner()) {
+            Toast.makeText(requireContext(), "Hanya OWNER yang dapat menghapus transaksi belanja!", Toast.LENGTH_SHORT).show()
+            return
+        }
         AlertDialog.Builder(requireContext())
             .setTitle("Hapus Daftar Belanja")
             .setMessage("Yakin ingin menghapus transaksi belanja '${po.supplierName}' (${CurrencyUtils.formatRupiah(po.totalAmount)})?")
@@ -496,11 +501,19 @@ class TransactionsFragment : Fragment() {
 
             items.forEach { item ->
                 details.append("- ${item.productName}\n")
-                if (item.targetPhoneNumber != null) {
+                if (!item.targetPhoneNumber.isNullOrBlank()) {
                     details.append("  Tujuan : ${item.targetPhoneNumber}\n")
+                    val statusLabel = when (item.digitalStatus.uppercase()) {
+                        "SUCCESS", "SUKSES" -> "?? SUKSES"
+                        "GANGGUAN", "GAGAL" -> "?? GANGGUAN"
+                        "PROSES", "PENDING" -> "?? PROSES (Menunggu Balasan)"
+                        else -> item.digitalStatus
+                    }
+                    details.append("  Status : $statusLabel\n")
                 }
-                if (item.snNumber != null) {
-                    details.append("  SN     : ${item.snNumber}\n")
+                if (!item.snNumber.isNullOrBlank()) {
+                    val snLabel = if (item.productName.contains("PLN", ignoreCase = true) || item.productName.contains("Token", ignoreCase = true)) "  Token  : " else "  SN     : "
+                    details.append("$snLabel${item.snNumber}\n")
                 }
                 val qtyStr = if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString() else item.quantity.toString()
                 details.append("  $qtyStr x ${CurrencyUtils.formatNumberOnly(item.sellingPrice)} = ${CurrencyUtils.formatNumberOnly(item.subtotal)}\n")
@@ -513,14 +526,35 @@ class TransactionsFragment : Fragment() {
                 details.append("Kembalian   : ${CurrencyUtils.formatRupiah(trx.changeAmount)}\n")
             }
 
-            AlertDialog.Builder(requireContext())
+            val hasDigital = items.any {
+                !it.targetPhoneNumber.isNullOrBlank() || it.snNumber != null ||
+                it.digitalStatus in listOf("PROSES", "PENDING", "GANGGUAN", "FAILED", "SUCCESS", "SUKSES") &&
+                trx.status != "COMPLETED"
+            }
+
+            val dialogBuilder = AlertDialog.Builder(requireContext())
                 .setTitle("Rincian Transaksi Kasir")
                 .setMessage(details.toString())
                 .setPositiveButton("Tutup", null)
                 .setNeutralButton("Cetak Struk") { _, _ ->
                     printTransactionReceipt(trx)
                 }
-                .show()
+
+            if (hasDigital) {
+                dialogBuilder.setNegativeButton("?? Update Status Server") { _, _ ->
+                    DigitalStatusDialogHelper.showUpdateStatusDialog(
+                        context = requireContext(),
+                        appDatabase = appDatabase,
+                        transaction = trx,
+                        scope = lifecycleScope,
+                        onSuccess = { updatedTrx, _ ->
+                            observeData()
+                        }
+                    )
+                }
+            }
+
+            dialogBuilder.show()
         }
     }
 

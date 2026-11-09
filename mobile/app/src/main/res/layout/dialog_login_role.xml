@@ -106,6 +106,53 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Container Password Auth jika berpindah ke OWNER -->
+        <LinearLayout
+            android:id="@+id/layoutOwnerPasswordAuth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Password / PIN Pemilik Toko"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#3E24E2" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilOwnerPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:hintEnabled="false"
+                app:passwordToggleEnabled="true"
+                app:boxBackgroundMode="none">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etOwnerPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:background="@drawable/bg_input_box"
+                    android:paddingHorizontal="14dp"
+                    android:hint="Masukkan PIN/Password Owner (Default: admin123)"
+                    android:inputType="textPassword"
+                    android:textColor="#0F172A"
+                    android:textSize="13sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="*Diperlukan untuk otorisasi akses Owner penuh"
+                android:textSize="11sp"
+                android:textColor="#64748B" />
+        </LinearLayout>
+
         <!-- Role Option 2: KASIR -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardRoleKasir"
@@ -183,6 +230,41 @@
                     android:clickable="false" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Container Pilihan Akun Kasir Terdaftar -->
+        <LinearLayout
+            android:id="@+id/layoutCashierSelect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pilih Staf Kasir yang Bertugas"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#0284C7" />
+
+            <Spinner
+                android:id="@+id/spCashierList"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_input_box"
+                android:paddingHorizontal="12dp" />
+
+            <TextView
+                android:id="@+id/tvCashierSelectHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Penjualan akan dicatat atas nama staf kasir yang dipilih"
+                android:textSize="11sp"
+                android:textColor="#64748B" />
+        </LinearLayout>
 
         <!-- Tombol Aksi -->
         <LinearLayout

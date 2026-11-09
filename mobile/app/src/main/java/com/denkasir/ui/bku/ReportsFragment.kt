@@ -437,7 +437,9 @@ class ReportsFragment : Fragment() {
                 it.category.contains("BEBAN", ignoreCase = true) ||
                 it.category.contains("LISTRIK", ignoreCase = true) ||
                 it.category.contains("GAJI", ignoreCase = true) ||
-                it.category.contains("SEWA", ignoreCase = true)
+                it.category.contains("SEWA", ignoreCase = true) ||
+                it.category.contains("SELISIH STOK", ignoreCase = true) ||
+                it.category.contains("PENYUSUTAN", ignoreCase = true)
             )
         }.sumOf { it.amount }
 
